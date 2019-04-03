@@ -1,0 +1,193 @@
+//..............................................................................
+//
+//  This file is part of the LuaDoxyXML toolkit.
+//
+//  LuaDoxyXML is distributed under the MIT license.
+//  For details see accompanying license.txt file,
+//  the public copy of which is also available at:
+//  http://tibbo.com/downloads/archive/luadoxyxml/license.txt
+//
+//..............................................................................
+
+lookahead = 2;
+ParserClassName = LuaParser;
+TokenClassName = LuaToken;
+
+Includes
+{
+	#include "LuaLexer.h"
+	#include "Module.h"
+}
+
+CppIncludes
+{
+	#include "LuaParser.llk.h"
+}
+
+start
+nullable
+block
+	:	statement*
+	;
+
+statement
+	:	expression_stmt
+	|	label
+	|	LuaTokenKind_Goto LuaTokenKind_Identifier
+	|	LuaTokenKind_Break
+	|	LuaTokenKind_Return expression_list?
+	|	LuaTokenKind_Do block LuaTokenKind_End
+	|	LuaTokenKind_While expression LuaTokenKind_Do block LuaTokenKind_End
+	|	LuaTokenKind_Repeat block LuaTokenKind_Until expression
+	|	LuaTokenKind_If expression LuaTokenKind_Then block
+		(LuaTokenKind_ElseIf expression LuaTokenKind_Then block)*
+		(LuaTokenKind_Else block)? LuaTokenKind_End
+	|	LuaTokenKind_For for_iterator LuaTokenKind_Do block LuaTokenKind_End
+	|	LuaTokenKind_Function function_name function_body
+			{
+				printf("function %s()\n", $2.m_name.m_first.sz());
+			}
+	|	LuaTokenKind_Local LuaTokenKind_Function LuaTokenKind_Identifier function_body
+	|	LuaTokenKind_Local name_list ('=' expression_list)?
+	|	';'
+	;
+
+label
+	:	LuaTokenKind_Context LuaTokenKind_Identifier LuaTokenKind_Context
+	;
+
+class
+{
+	FunctionName m_name;
+}
+function_name
+	:	LuaTokenKind_Identifier
+			{
+				$.m_name.m_first = $1.m_data.m_string;
+			}
+		('.' LuaTokenKind_Identifier
+			{
+				$.m_name.m_list.insertTail($1.m_data.m_string);
+			}
+		)*
+		(':' LuaTokenKind_Identifier
+			{
+				$.m_name.m_list.insertTail($1.m_data.m_string);
+				$.m_name.m_isMethod = true;
+			}
+		)?
+	;
+
+for_iterator
+	: 	LuaTokenKind_Identifier '=' expression ',' expression (',' expression)?
+	| 	name_list LuaTokenKind_In expression_list
+	;
+
+name_list
+	:	LuaTokenKind_Identifier (',' LuaTokenKind_Identifier)*
+	;
+
+expression_stmt
+	:	postfix_expr (',' postfix_expr)* ('=' expression_list)?
+	;
+
+expression_list
+	:	expression (',' expression)*
+	;
+
+expression
+	:	unary_expr (bin_op expression)*
+	;
+
+unary_expr
+	:	postfix_expr
+	|	un_op unary_expr
+	;
+
+postfix_expr
+	: 	primary_expr postfix_op*
+	;
+
+postfix_op
+	:	'[' expression ']'
+	|	'.' LuaTokenKind_Identifier
+	|	(':' LuaTokenKind_Identifier)? arguments
+	;
+
+primary_expr
+	:	LuaTokenKind_Nil
+	|	LuaTokenKind_False
+	|	LuaTokenKind_True
+	|	LuaTokenKind_Number
+	|	LuaTokenKind_String
+	|	LuaTokenKind_Identifier
+	|	LuaTokenKind_Ellipsis
+	|	LuaTokenKind_Function function_body
+	|	table_constructor
+	|	'(' expression ')'
+	;
+
+arguments
+	: 	'(' expression_list? ')'
+	|	table_constructor
+	|	LuaTokenKind_String
+	;
+
+function_body
+	:	'(' parameter_list? ')' block LuaTokenKind_End
+	;
+
+parameter_list
+	:	name_list (',' LuaTokenKind_Ellipsis)?
+	|	LuaTokenKind_Ellipsis
+	;
+
+table_constructor
+	:	'{' field_list? '}'
+	;
+
+field_list
+	:	field (field_sep field?)*
+	;
+
+field
+	:	'[' expression ']' '=' expression
+	|	LuaTokenKind_Identifier '=' expression
+	|	expression
+	;
+
+field_sep
+	:	','
+	|	';'
+	;
+
+bin_op
+	:	LuaTokenKind_Or
+	|	LuaTokenKind_And
+	|	'<'
+	|	'>'
+	|	LuaTokenKind_Le
+	|	LuaTokenKind_Ge
+	|	LuaTokenKind_Ne
+	|	LuaTokenKind_Eq
+	|	'|'
+	|	'~'
+	|	'&'
+	|	LuaTokenKind_Shl
+	|	LuaTokenKind_Shr
+	|	LuaTokenKind_Concat
+	|	'+'
+	|	'-'
+	|	'*'
+	|	'/'
+	|	'%'
+	|	LuaTokenKind_FloorDiv
+	|	'^'
+	;
+
+un_op
+	:	'~'
+	|	'-'
+	|	'#'
+	|	LuaTokenKind_Not
+	;

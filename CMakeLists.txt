@@ -1,0 +1,24 @@
+#...............................................................................
+#
+#  This file is part of the LuaDoxyXML toolkit.
+#
+#  LuaDoxyXML is distributed under the MIT license.
+#  For details see accompanying license.txt file,
+#  the public copy of which is also available at:
+#  http://tibbo.com/downloads/archive/luadoxyxml/license.txt
+#
+#...............................................................................
+
+project(luadoxyxml)
+
+cmake_minimum_required(VERSION 3.3)
+
+include(axl_cmake.cmake NO_POLICY_SCOPE)
+
+#. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+include(version.cmake)
+
+add_subdirectory(src)
+
+#...............................................................................

@@ -1,0 +1,28 @@
+//..............................................................................
+//
+//  This file is part of the LuaDoxyXML toolkit.
+//
+//  LuaDoxyXML is distributed under the MIT license.
+//  For details see accompanying license.txt file,
+//  the public copy of which is also available at:
+//  http://tibbo.com/downloads/archive/luadoxyxml/license.txt
+//
+//..............................................................................
+
+#pragma once
+
+#ifdef _DEBUG
+#	define VERSION_DEBUG_SUFFIX " Debug"
+#else
+#	define VERSION_DEBUG_SUFFIX ""
+#endif
+
+#define VERSION_MAJOR      ${LUADOXYXML_VERSION_MAJOR}
+#define VERSION_MINOR      ${LUADOXYXML_VERSION_MINOR}
+#define VERSION_REVISION   ${LUADOXYXML_VERSION_REVISION}
+#define VERSION_FULL       MAKELONG (MAKEWORD (VERSION_REVISION, VERSION_MINOR), VERSION_MAJOR)
+#define VERSION_TAG        "${LUADOXYXML_VERSION_TAG}"
+#define VERSION_TAG_SUFFIX "${LUADOXYXML_VERSION_TAG_SUFFIX}"
+#define VERSION_STRING     "${LUADOXYXML_VERSION_MAJOR}.${LUADOXYXML_VERSION_MINOR}.${LUADOXYXML_VERSION_REVISION}${LUADOXYXML_VERSION_TAG_SUFFIX} (${LUADOXYXML_CPU}" VERSION_DEBUG_SUFFIX ")"
+#define VERSION_COMPANY    "${LUADOXYXML_VERSION_COMPANY}"
+#define VERSION_YEARS      "${LUADOXYXML_VERSION_YEARS}"
