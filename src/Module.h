@@ -11,10 +11,15 @@
 
 #pragma once
 
+#include "LuaLexer.h"
+
 //..............................................................................
 
 struct ModuleItem: sl::ListLink
 {
+	LuaToken::Pos m_pos;
+	sl::StringRef m_doxyComment;
+
 	virtual
 	~ModuleItem()
 	{
@@ -25,13 +30,66 @@ struct ModuleItem: sl::ListLink
 
 struct FunctionName
 {
-	sl::String m_first;
-	sl::BoxList<sl::String> m_list;
+	sl::StringRef m_first;
+	sl::BoxList<sl::StringRef> m_list;
 	bool m_isMethod;
 
 	FunctionName()
 	{
 		m_isMethod = false;
+	}
+
+	FunctionName(const FunctionName& src)
+	{
+		operator = (src);
+	}
+
+	FunctionName(FunctionName&& src)
+	{
+		operator = (src);
+	}
+
+	FunctionName&
+	operator = (const FunctionName& src);
+
+	FunctionName&
+	operator = (FunctionName&& src)
+	{
+		sl::takeOver(this, &src);
+		return *this;
+	}
+};
+
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+struct FunctionArgList
+{
+	sl::BoxList<sl::StringRef> m_list;
+	bool m_isVarArg;
+
+	FunctionArgList()
+	{
+		m_isVarArg = false;
+	}
+
+	FunctionArgList(const FunctionArgList& src)
+	{
+		operator = (src);
+	}
+
+	FunctionArgList(FunctionArgList&& src)
+	{
+		operator = (src);
+	}
+
+	FunctionArgList&
+	operator = (const FunctionArgList& src);
+
+	FunctionArgList&
+	operator = (FunctionArgList&& src)
+	{
+		sl::takeOver(this, &src);
+		return *this;
 	}
 };
 
@@ -40,6 +98,7 @@ struct FunctionName
 struct Function: ModuleItem
 {
 	FunctionName m_name;
+	FunctionArgList m_argList;
 };
 
 //..............................................................................

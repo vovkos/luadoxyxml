@@ -17,7 +17,11 @@ set(
 	APP_H_LIST
 	CmdLine.h
 	LuaLexer.h
+	DoxyBlock.h
+	DoxyGroup.h
 	DoxyLexer.h
+	DoxyParser.h
+	DoxyMgr.h
 	Module.h
 	version.h.in
 	)
@@ -27,7 +31,12 @@ set(
 	main.cpp
 	CmdLine.cpp
 	LuaLexer.cpp
+	LuaParser.cpp
+	DoxyBlock.cpp
+	DoxyGroup.cpp
 	DoxyLexer.cpp
+	DoxyParser.cpp
+	DoxyMgr.cpp
 	Module.cpp
 	)
 
@@ -147,6 +156,7 @@ source_group(
 include_directories(
 	${GRACO_INC_DIR}
 	${AXL_INC_DIR}
+	${CMAKE_CURRENT_LIST_DIR}
 	${GEN_DIR}
 	)
 

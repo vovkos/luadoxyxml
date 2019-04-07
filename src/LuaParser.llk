@@ -24,6 +24,28 @@ CppIncludes
 	#include "LuaParser.llk.h"
 }
 
+Members
+{
+	Module* m_module;
+	ModuleItem* m_lastDeclaredItem;
+	int m_scopeLevel;
+
+	LuaParser(Module* module);
+
+	bool
+	variableDeclaration(
+		const Token::Pos& pos,
+		const sl::StringRef& name
+		);
+
+	bool
+	functionDeclaration(
+		const Token::Pos& pos,
+		FunctionName* name,
+		FunctionArgList* argList
+		);
+}
+
 start
 nullable
 block
@@ -37,17 +59,59 @@ statement
 	|	LuaTokenKind_Break
 	|	LuaTokenKind_Return expression_list?
 	|	LuaTokenKind_Do block LuaTokenKind_End
-	|	LuaTokenKind_While expression LuaTokenKind_Do block LuaTokenKind_End
-	|	LuaTokenKind_Repeat block LuaTokenKind_Until expression
-	|	LuaTokenKind_If expression LuaTokenKind_Then block
-		(LuaTokenKind_ElseIf expression LuaTokenKind_Then block)*
-		(LuaTokenKind_Else block)? LuaTokenKind_End
-	|	LuaTokenKind_For for_iterator LuaTokenKind_Do block LuaTokenKind_End
-	|	LuaTokenKind_Function function_name function_body
+	|	LuaTokenKind_While
 			{
-				printf("function %s()\n", $2.m_name.m_first.sz());
+				m_scopeLevel++;
 			}
-	|	LuaTokenKind_Local LuaTokenKind_Function LuaTokenKind_Identifier function_body
+		expression LuaTokenKind_Do block LuaTokenKind_End
+			{
+				m_scopeLevel--;
+			}
+	|	LuaTokenKind_Repeat
+			{
+				m_scopeLevel++;
+			}
+		block
+			{
+				m_scopeLevel--;
+			}
+		LuaTokenKind_Until expression
+	|	LuaTokenKind_If
+			{
+				m_scopeLevel++;
+			}
+		expression LuaTokenKind_Then block
+		(LuaTokenKind_ElseIf expression LuaTokenKind_Then block)*
+		(LuaTokenKind_Else block)?
+			{
+				m_scopeLevel--;
+			}
+		LuaTokenKind_End
+	|	LuaTokenKind_For
+			{
+				m_scopeLevel++;
+			}
+		for_iterator LuaTokenKind_Do block LuaTokenKind_End
+			{
+				m_scopeLevel--;
+			}
+	|	LuaTokenKind_Function
+			{
+				m_scopeLevel++;
+			}
+		function_name function_body
+			{
+				if (!--m_scopeLevel)
+					return functionDeclaration($1.m_pos, &$2.m_name, &$3.m_argList);
+			}
+	|	LuaTokenKind_Local
+			{
+				m_scopeLevel++;
+			}
+		LuaTokenKind_Function LuaTokenKind_Identifier function_body
+			{
+				m_scopeLevel--;
+			}
 	|	LuaTokenKind_Local name_list ('=' expression_list)?
 	|	';'
 	;
@@ -83,12 +147,30 @@ for_iterator
 	| 	name_list LuaTokenKind_In expression_list
 	;
 
+class
+{
+	sl::BoxList<sl::StringRef> m_nameList;
+}
 name_list
-	:	LuaTokenKind_Identifier (',' LuaTokenKind_Identifier)*
+	:	LuaTokenKind_Identifier
+			{
+				$.m_nameList.insertTail($1.m_data.m_string);
+			}
+		(',' LuaTokenKind_Identifier
+			{
+				$.m_nameList.insertTail($3.m_data.m_string);
+			}
+		)*
 	;
 
 expression_stmt
-	:	postfix_expr (',' postfix_expr)* ('=' expression_list)?
+	:	postfix_expr (',' postfix_expr)*
+		('=' expression_list
+			{
+				if (!m_scopeLevel && !$1.m_name.isEmpty())
+					return variableDeclaration($1.m_pos, $1.m_name);
+			}
+		)?
 	;
 
 expression_list
@@ -104,8 +186,22 @@ unary_expr
 	|	un_op unary_expr
 	;
 
+class
+{
+	Token::Pos m_pos;
+	sl::StringRef m_name;
+}
 postfix_expr
-	: 	primary_expr postfix_op*
+	: 	primary_expr
+			{
+				$.m_pos = $1.m_pos;
+				$.m_name = $1.m_name;
+			}
+		(postfix_op
+			{
+				$.m_name.clear();
+			}
+		)*
 	;
 
 postfix_op
@@ -114,6 +210,11 @@ postfix_op
 	|	(':' LuaTokenKind_Identifier)? arguments
 	;
 
+class
+{
+	Token::Pos m_pos;
+	sl::StringRef m_name;
+}
 primary_expr
 	:	LuaTokenKind_Nil
 	|	LuaTokenKind_False
@@ -121,6 +222,10 @@ primary_expr
 	|	LuaTokenKind_Number
 	|	LuaTokenKind_String
 	|	LuaTokenKind_Identifier
+			{
+				$.m_pos = $1.m_pos;
+				$.m_name = $1.m_data.m_string;
+			}
 	|	LuaTokenKind_Ellipsis
 	|	LuaTokenKind_Function function_body
 	|	table_constructor
@@ -133,13 +238,38 @@ arguments
 	|	LuaTokenKind_String
 	;
 
+class
+{
+	FunctionArgList m_argList;
+}
 function_body
-	:	'(' parameter_list? ')' block LuaTokenKind_End
+	:	'('
+		(parameter_list
+			{
+				sl::takeOver(&$.m_argList, &$2.m_argList);
+			}
+		)?
+		')' block LuaTokenKind_End
 	;
 
+class
+{
+	FunctionArgList m_argList;
+}
 parameter_list
-	:	name_list (',' LuaTokenKind_Ellipsis)?
+	:	name_list
+			{
+				sl::takeOver(&$.m_argList.m_list, &$1.m_nameList);
+			}
+		(',' LuaTokenKind_Ellipsis
+			{
+				$.m_argList.m_isVarArg = true;
+			}
+		)?
 	|	LuaTokenKind_Ellipsis
+			{
+				$.m_argList.m_isVarArg = true;
+			}
 	;
 
 table_constructor

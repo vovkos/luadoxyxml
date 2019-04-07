@@ -77,7 +77,7 @@ main := |*
 '\\sa'            { createToken(DoxyTokenKind_SeeAlso); };
 '\\footnote'      { createToken(DoxyTokenKind_Footnote); };
 
-'\\' rc*          { createTextToken (DoxyTokenKind_OtherCommand); };
+'\\' rc*          { createTextToken(DoxyTokenKind_OtherCommand); };
 
 '@{'              { createToken(DoxyTokenKind_OpeningBrace); };
 '@}'              { createToken(DoxyTokenKind_ClosingBrace); };

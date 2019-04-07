@@ -100,9 +100,9 @@ dec+             { createIntegerToken (10); };
 dec+ ('.' dec*) | ([eE] [+\-]? dec+)
 				 { createFpToken (); };
 
-'--!' [^\n]*     { createDoxyCommentToken(); };
+'--!' [^\n]*     { createDoxyCommentToken(LuaTokenKind_DoxyComment_sl); };
 '--[[!' (any | nl)* :>> '--]]'
-				 { createDoxyCommentToken(); };
+				 { createDoxyCommentToken(LuaTokenKind_DoxyComment_ml); };
 
 '--' [^\n]*      ;
 '--[[' (any | nl)* :>> '--]]'

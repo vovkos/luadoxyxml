@@ -49,8 +49,9 @@ run(CmdLine* cmdLine)
 	bool result;
 
 	io::SimpleMappedFile file;
+	Module module;
 	LuaLexer lexer;
-	LuaParser parser;
+	LuaParser parser(&module);
 
 	sl::ConstBoxIterator<sl::String> it = cmdLine->m_inputFileNameList.getHead();
 	for (; it; it++)
@@ -69,6 +70,10 @@ run(CmdLine* cmdLine)
 		for (;;)
 		{
 			const LuaToken* token = lexer.getToken();
+
+			sl::StringRef comment;
+			ModuleItem* lastDeclaredItem;
+
 			switch (token->m_token)
 			{
 			case LuaTokenKind_Error:
@@ -76,23 +81,25 @@ run(CmdLine* cmdLine)
 				lex::pushSrcPosError(fileName, token->m_pos);
 				return false;
 
-			case LuaTokenKind_DoxyComment:
-/*				sl::StringRef comment = token->m_data.m_string;
-				bool isSingleLine = token->m_token <= TokenKind_DoxyComment2;
-				ModuleItem* lastDeclaredItem = NULL;
+			case LuaTokenKind_DoxyComment_sl:
+			case LuaTokenKind_DoxyComment_ml:
+				comment = token->m_data.m_string;
+				lastDeclaredItem = NULL;
 
-				if (isSingleLine && !comment.isEmpty() && comment[0] == '<')
+				if (token->m_token == LuaTokenKind_DoxyComment_sl &&
+					!comment.isEmpty() && comment[0] == '<')
 				{
 					lastDeclaredItem = parser.m_lastDeclaredItem;
 					comment = comment.getSubString(1);
 				}
 
-				parser.m_doxyParser.addComment(
+				/* parser.m_doxyParser.addComment(
 					comment,
 					token->m_pos,
 					isSingleLine,
 					lastDeclaredItem
 					); */
+
 				break;
 
 			default:

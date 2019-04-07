@@ -22,7 +22,8 @@ enum LuaTokenKind
 	LuaTokenKind_Identifier = 256,
 	LuaTokenKind_Number,
 	LuaTokenKind_String,
-	LuaTokenKind_DoxyComment,
+	LuaTokenKind_DoxyComment_sl,
+	LuaTokenKind_DoxyComment_ml,
 
 	// keywords
 
@@ -79,12 +80,13 @@ AXL_LEX_BEGIN_TOKEN_NAME_MAP(LuaTokenName)
 
 	// common tokens
 
-	AXL_LEX_TOKEN_NAME(LuaTokenKind_Eof,         "eof")
-	AXL_LEX_TOKEN_NAME(LuaTokenKind_Error,       "error")
-	AXL_LEX_TOKEN_NAME(LuaTokenKind_Identifier,  "identifier")
-	AXL_LEX_TOKEN_NAME(LuaTokenKind_Number,      "number")
-	AXL_LEX_TOKEN_NAME(LuaTokenKind_String,      "string")
-	AXL_LEX_TOKEN_NAME(LuaTokenKind_DoxyComment, "doxy-comment")
+	AXL_LEX_TOKEN_NAME(LuaTokenKind_Eof,            "eof")
+	AXL_LEX_TOKEN_NAME(LuaTokenKind_Error,          "error")
+	AXL_LEX_TOKEN_NAME(LuaTokenKind_Identifier,     "identifier")
+	AXL_LEX_TOKEN_NAME(LuaTokenKind_Number,         "number")
+	AXL_LEX_TOKEN_NAME(LuaTokenKind_String,         "string")
+	AXL_LEX_TOKEN_NAME(LuaTokenKind_DoxyComment_sl, "doxy-comment-sl")
+	AXL_LEX_TOKEN_NAME(LuaTokenKind_DoxyComment_ml, "doxy-comment-ml")
 
 	// keywords
 
@@ -154,7 +156,7 @@ protected:
 	createFpToken();
 
 	LuaToken*
-	createDoxyCommentToken();
+	createDoxyCommentToken(int tokenKind);
 
 	// implemented in *.rl
 

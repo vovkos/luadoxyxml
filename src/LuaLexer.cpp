@@ -50,21 +50,21 @@ LuaLexer::createFpToken()
 }
 
 LuaToken*
-LuaLexer::createDoxyCommentToken()
+LuaLexer::createDoxyCommentToken(int tokenKind)
 {
 	ASSERT(te - ts >= 3 && ts[0] == '-');
 
 	size_t left = 3;
 	size_t right = 0;
 
-	if (ts[2] == '[') // multiline lua comment: --[[!
+	if (tokenKind == LuaTokenKind_DoxyComment_ml)
 	{
-		ASSERT(ts[1] == '*' && te[-1] == '/' && te[-2] == '*');
-		left = 5;
+		ASSERT(ts[2] == '[' && ts[3] == '[' && te[-1] == ']' && te[-2] == ']');
+		left = 4;
 		right = 4;
 	}
 
-	LuaToken* token = createStringToken(LuaTokenKind_DoxyComment, left, right);
+	LuaToken* token = createStringToken(tokenKind, left, right);
 	token->m_channelMask = LuaTokenChannelMask_DoxyComment;
 	return token;
 }
