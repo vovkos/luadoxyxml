@@ -10,19 +10,19 @@
 //..............................................................................
 
 #include "pch.h"
-#include "LuaLexer.h"
-#include "LuaLexer.rl.cpp"
+#include "Lexer.h"
+#include "Lexer.rl.cpp"
 
 //..............................................................................
 
-LuaToken*
-LuaLexer::createStringToken(
+Token*
+Lexer::createStringToken(
 	int tokenKind,
 	size_t left,
 	size_t right
 	)
 {
-	LuaToken* token = createToken(tokenKind);
+	Token* token = createToken(tokenKind);
 	ASSERT(token->m_pos.m_length >= left + right);
 
 	size_t length = token->m_pos.m_length - (left + right);
@@ -30,42 +30,53 @@ LuaLexer::createStringToken(
 	return token;
 }
 
-LuaToken*
-LuaLexer::createIntegerToken(
+Token*
+Lexer::createIntegerToken(
 	int radix,
 	size_t left
 	)
 {
-	LuaToken* token = createToken(LuaTokenKind_Number);
+	Token* token = createToken(TokenKind_Number);
 	token->m_data.m_double = (double) _strtoui64(ts + left, NULL, radix);
 	return token;
 }
 
-LuaToken*
-LuaLexer::createFpToken()
+Token*
+Lexer::createFpToken()
 {
-	LuaToken* token = createToken(LuaTokenKind_Number);
+	Token* token = createToken(TokenKind_Number);
 	token->m_data.m_double = strtod(ts, NULL);
 	return token;
 }
 
-LuaToken*
-LuaLexer::createDoxyCommentToken(int tokenKind)
+Token*
+Lexer::createDoxyCommentToken(int tokenKind)
 {
-	ASSERT(te - ts >= 3 && ts[0] == '-');
+	ASSERT(te - ts >= 3 && ts[0] == '-' && ts[1] == '-');
 
-	size_t left = 3;
+	size_t left = 0;
 	size_t right = 0;
 
-	if (tokenKind == LuaTokenKind_DoxyComment_ml)
+	switch (tokenKind)
 	{
-		ASSERT(ts[2] == '[' && ts[3] == '[' && te[-1] == ']' && te[-2] == ']');
-		left = 4;
+	case TokenKind_DoxyComment_sl: // --!
+		ASSERT(ts[2] == '!');
+		left = 3;
+		break;
+
+	case TokenKind_DoxyComment_ml: // --[[!
+		ASSERT(ts[2] == '[' && ts[3] == '[' && ts[4] == '!');
+		ASSERT(te[-1] == ']' && te[-2] == ']');
+		left = 5;
 		right = 4;
+		break;
+
+	default:
+		ASSERT(false);
 	}
 
-	LuaToken* token = createStringToken(tokenKind, left, right);
-	token->m_channelMask = LuaTokenChannelMask_DoxyComment;
+	Token* token = createStringToken(tokenKind, left, right);
+	token->m_channelMask = TokenChannelMask_DoxyComment;
 	return token;
 }
 

@@ -10,39 +10,61 @@
 //..............................................................................
 
 lookahead = 2;
-ParserClassName = LuaParser;
-TokenClassName = LuaToken;
+ParserClassName = Parser;
+TokenClassName = Token;
 
 Includes
 {
-	#include "LuaLexer.h"
+	#include "Lexer.h"
 	#include "Module.h"
 }
 
 CppIncludes
 {
-	#include "LuaParser.llk.h"
+	#include "Parser.llk.h"
 }
 
 Members
 {
 	Module* m_module;
 	ModuleItem* m_lastDeclaredItem;
+	dox::Parser m_doxyParser;
+	sl::String m_fileName;
 	int m_scopeLevel;
+}
 
-	LuaParser(Module* module);
+Members2
+{
+	Parser(Module* module);
 
-	bool
+	void
+	create(
+		const sl::StringRef& fileName,
+		int startSymbolKind = StartSymbol
+		)
+	{
+		m_fileName = fileName;
+		llk::Parser<Parser, Token>::create(startSymbolKind);
+	}
+
+	Variable*
 	variableDeclaration(
 		const Token::Pos& pos,
 		const sl::StringRef& name
 		);
 
-	bool
+	Function*
 	functionDeclaration(
 		const Token::Pos& pos,
 		FunctionName* name,
 		FunctionArgList* argList
+		);
+
+	void
+	finalizeDeclaration(
+		const Token::Pos& pos,
+		const sl::StringRef& name,
+		ModuleItem* item
 		);
 }
 
@@ -55,19 +77,19 @@ block
 statement
 	:	expression_stmt
 	|	label
-	|	LuaTokenKind_Goto LuaTokenKind_Identifier
-	|	LuaTokenKind_Break
-	|	LuaTokenKind_Return expression_list?
-	|	LuaTokenKind_Do block LuaTokenKind_End
-	|	LuaTokenKind_While
+	|	TokenKind_Goto TokenKind_Identifier
+	|	TokenKind_Break
+	|	TokenKind_Return expression_list?
+	|	TokenKind_Do block TokenKind_End
+	|	TokenKind_While
 			{
 				m_scopeLevel++;
 			}
-		expression LuaTokenKind_Do block LuaTokenKind_End
+		expression TokenKind_Do block TokenKind_End
 			{
 				m_scopeLevel--;
 			}
-	|	LuaTokenKind_Repeat
+	|	TokenKind_Repeat
 			{
 				m_scopeLevel++;
 			}
@@ -75,27 +97,27 @@ statement
 			{
 				m_scopeLevel--;
 			}
-		LuaTokenKind_Until expression
-	|	LuaTokenKind_If
+		TokenKind_Until expression
+	|	TokenKind_If
 			{
 				m_scopeLevel++;
 			}
-		expression LuaTokenKind_Then block
-		(LuaTokenKind_ElseIf expression LuaTokenKind_Then block)*
-		(LuaTokenKind_Else block)?
+		expression TokenKind_Then block
+		(TokenKind_ElseIf expression TokenKind_Then block)*
+		(TokenKind_Else block)?
 			{
 				m_scopeLevel--;
 			}
-		LuaTokenKind_End
-	|	LuaTokenKind_For
+		TokenKind_End
+	|	TokenKind_For
 			{
 				m_scopeLevel++;
 			}
-		for_iterator LuaTokenKind_Do block LuaTokenKind_End
+		for_iterator TokenKind_Do block TokenKind_End
 			{
 				m_scopeLevel--;
 			}
-	|	LuaTokenKind_Function
+	|	TokenKind_Function
 			{
 				m_scopeLevel++;
 			}
@@ -104,20 +126,20 @@ statement
 				if (!--m_scopeLevel)
 					return functionDeclaration($1.m_pos, &$2.m_name, &$3.m_argList);
 			}
-	|	LuaTokenKind_Local
+	|	TokenKind_Local
 			{
 				m_scopeLevel++;
 			}
-		LuaTokenKind_Function LuaTokenKind_Identifier function_body
+		TokenKind_Function TokenKind_Identifier function_body
 			{
 				m_scopeLevel--;
 			}
-	|	LuaTokenKind_Local name_list ('=' expression_list)?
+	|	TokenKind_Local name_list ('=' expression_list)?
 	|	';'
 	;
 
 label
-	:	LuaTokenKind_Context LuaTokenKind_Identifier LuaTokenKind_Context
+	:	TokenKind_Context TokenKind_Identifier TokenKind_Context
 	;
 
 class
@@ -125,16 +147,16 @@ class
 	FunctionName m_name;
 }
 function_name
-	:	LuaTokenKind_Identifier
+	:	TokenKind_Identifier
 			{
 				$.m_name.m_first = $1.m_data.m_string;
 			}
-		('.' LuaTokenKind_Identifier
+		('.' TokenKind_Identifier
 			{
 				$.m_name.m_list.insertTail($1.m_data.m_string);
 			}
 		)*
-		(':' LuaTokenKind_Identifier
+		(':' TokenKind_Identifier
 			{
 				$.m_name.m_list.insertTail($1.m_data.m_string);
 				$.m_name.m_isMethod = true;
@@ -143,8 +165,8 @@ function_name
 	;
 
 for_iterator
-	: 	LuaTokenKind_Identifier '=' expression ',' expression (',' expression)?
-	| 	name_list LuaTokenKind_In expression_list
+	: 	TokenKind_Identifier '=' expression ',' expression (',' expression)?
+	| 	name_list TokenKind_In expression_list
 	;
 
 class
@@ -152,11 +174,11 @@ class
 	sl::BoxList<sl::StringRef> m_nameList;
 }
 name_list
-	:	LuaTokenKind_Identifier
+	:	TokenKind_Identifier
 			{
 				$.m_nameList.insertTail($1.m_data.m_string);
 			}
-		(',' LuaTokenKind_Identifier
+		(',' TokenKind_Identifier
 			{
 				$.m_nameList.insertTail($3.m_data.m_string);
 			}
@@ -165,11 +187,12 @@ name_list
 
 expression_stmt
 	:	postfix_expr (',' postfix_expr)*
-		('=' expression_list
+		('='
 			{
 				if (!m_scopeLevel && !$1.m_name.isEmpty())
 					return variableDeclaration($1.m_pos, $1.m_name);
 			}
+		expression_list
 		)?
 	;
 
@@ -206,8 +229,8 @@ postfix_expr
 
 postfix_op
 	:	'[' expression ']'
-	|	'.' LuaTokenKind_Identifier
-	|	(':' LuaTokenKind_Identifier)? arguments
+	|	'.' TokenKind_Identifier
+	|	(':' TokenKind_Identifier)? arguments
 	;
 
 class
@@ -216,18 +239,18 @@ class
 	sl::StringRef m_name;
 }
 primary_expr
-	:	LuaTokenKind_Nil
-	|	LuaTokenKind_False
-	|	LuaTokenKind_True
-	|	LuaTokenKind_Number
-	|	LuaTokenKind_String
-	|	LuaTokenKind_Identifier
+	:	TokenKind_Nil
+	|	TokenKind_False
+	|	TokenKind_True
+	|	TokenKind_Number
+	|	TokenKind_String
+	|	TokenKind_Identifier
 			{
 				$.m_pos = $1.m_pos;
 				$.m_name = $1.m_data.m_string;
 			}
-	|	LuaTokenKind_Ellipsis
-	|	LuaTokenKind_Function function_body
+	|	TokenKind_Ellipsis
+	|	TokenKind_Function function_body
 	|	table_constructor
 	|	'(' expression ')'
 	;
@@ -235,7 +258,7 @@ primary_expr
 arguments
 	: 	'(' expression_list? ')'
 	|	table_constructor
-	|	LuaTokenKind_String
+	|	TokenKind_String
 	;
 
 class
@@ -249,7 +272,7 @@ function_body
 				sl::takeOver(&$.m_argList, &$2.m_argList);
 			}
 		)?
-		')' block LuaTokenKind_End
+		')' block TokenKind_End
 	;
 
 class
@@ -261,12 +284,12 @@ parameter_list
 			{
 				sl::takeOver(&$.m_argList.m_list, &$1.m_nameList);
 			}
-		(',' LuaTokenKind_Ellipsis
+		(',' TokenKind_Ellipsis
 			{
 				$.m_argList.m_isVarArg = true;
 			}
 		)?
-	|	LuaTokenKind_Ellipsis
+	|	TokenKind_Ellipsis
 			{
 				$.m_argList.m_isVarArg = true;
 			}
@@ -282,7 +305,7 @@ field_list
 
 field
 	:	'[' expression ']' '=' expression
-	|	LuaTokenKind_Identifier '=' expression
+	|	TokenKind_Identifier '=' expression
 	|	expression
 	;
 
@@ -292,26 +315,26 @@ field_sep
 	;
 
 bin_op
-	:	LuaTokenKind_Or
-	|	LuaTokenKind_And
+	:	TokenKind_Or
+	|	TokenKind_And
 	|	'<'
 	|	'>'
-	|	LuaTokenKind_Le
-	|	LuaTokenKind_Ge
-	|	LuaTokenKind_Ne
-	|	LuaTokenKind_Eq
+	|	TokenKind_Le
+	|	TokenKind_Ge
+	|	TokenKind_Ne
+	|	TokenKind_Eq
 	|	'|'
 	|	'~'
 	|	'&'
-	|	LuaTokenKind_Shl
-	|	LuaTokenKind_Shr
-	|	LuaTokenKind_Concat
+	|	TokenKind_Shl
+	|	TokenKind_Shr
+	|	TokenKind_Concat
 	|	'+'
 	|	'-'
 	|	'*'
 	|	'/'
 	|	'%'
-	|	LuaTokenKind_FloorDiv
+	|	TokenKind_FloorDiv
 	|	'^'
 	;
 
@@ -319,5 +342,5 @@ un_op
 	:	'~'
 	|	'-'
 	|	'#'
-	|	LuaTokenKind_Not
+	|	TokenKind_Not
 	;

@@ -11,18 +11,50 @@
 
 #pragma once
 
-#include "LuaLexer.h"
+#include "Lexer.h"
+
+class Module;
 
 //..............................................................................
 
 struct ModuleItem: sl::ListLink
 {
-	LuaToken::Pos m_pos;
-	sl::StringRef m_doxyComment;
+	Module* m_module;
+	sl::String m_fileName;
+	Token::Pos m_pos;
+	dox::Block* m_doxyBlock;
+
+	ModuleItem()
+	{
+		m_module = NULL;
+		m_doxyBlock = NULL;
+	}
 
 	virtual
 	~ModuleItem()
 	{
+	}
+
+	virtual
+	sl::String
+	createDoxyRefId() = 0;
+
+	virtual
+	bool
+	generateDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		) = 0;
+
+	sl::String
+	getDoxyLocationString()
+	{
+		return sl::formatString("<location file='%s' line='%d' col='%d'/>\n",
+			m_fileName.sz(),
+			m_pos.m_line + 1,
+			m_pos.m_col + 1
+			);
 	}
 };
 
@@ -58,6 +90,9 @@ struct FunctionName
 		sl::takeOver(this, &src);
 		return *this;
 	}
+
+	sl::StringRef
+	getFullName() const;
 };
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -99,6 +134,18 @@ struct Function: ModuleItem
 {
 	FunctionName m_name;
 	FunctionArgList m_argList;
+
+	virtual
+	sl::String
+	createDoxyRefId();
+
+	virtual
+	bool
+	generateDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
 };
 
 //..............................................................................
@@ -107,14 +154,56 @@ struct Variable: ModuleItem
 {
 	sl::String m_name;
 	sl::String m_initializer;
+
+	virtual
+	sl::String
+	createDoxyRefId();
+
+	virtual
+	bool
+	generateDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
 };
 
 //..............................................................................
 
-struct Module
+class Module
 {
-	sl::List<Variable> m_variableList;
-	sl::List<Function> m_functionList;
+	friend class Parser;
+
+protected:
+	sl::List<ModuleItem> m_itemList;
+	sl::StringHashTable<ModuleItem*> m_itemMap;
+
+public:
+	dox::Module m_doxyModule;
+
+public:
+	Module(dox::Host* doxyHost):
+		m_doxyModule(doxyHost)
+	{
+	}
+
+	dox::Host* getDoxyHost()
+	{
+		return m_doxyModule.getHost();
+	}
+
+	ModuleItem*
+	findItem(const sl::StringRef& name)
+	{
+		return m_itemMap.findValue(name, NULL);
+	}
+
+	bool
+	generateGlobalNamespaceDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
 };
 
 //..............................................................................

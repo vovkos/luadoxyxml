@@ -16,12 +16,8 @@
 set(
 	APP_H_LIST
 	CmdLine.h
-	LuaLexer.h
-	DoxyBlock.h
-	DoxyGroup.h
-	DoxyLexer.h
-	DoxyParser.h
-	DoxyMgr.h
+	DoxyHost.h
+	Lexer.h
 	Module.h
 	version.h.in
 	)
@@ -30,25 +26,20 @@ set(
 	APP_CPP_LIST
 	main.cpp
 	CmdLine.cpp
-	LuaLexer.cpp
-	LuaParser.cpp
-	DoxyBlock.cpp
-	DoxyGroup.cpp
-	DoxyLexer.cpp
-	DoxyParser.cpp
-	DoxyMgr.cpp
+	DoxyHost.cpp
+	Lexer.cpp
+	Parser.cpp
 	Module.cpp
 	)
 
 set(
 	APP_RL_LIST
-	LuaLexer.rl
-	DoxyLexer.rl
+	Lexer.rl
 	)
 
 set(
 	APP_LLK_LIST
-	LuaParser.llk
+	Parser.llk
 	)
 
 source_group(
@@ -92,21 +83,16 @@ configure_file(
 	)
 
 add_ragel_step(
-	LuaLexer.rl.cpp
-	LuaLexer.rl
-	)
-
-add_ragel_step(
-	DoxyLexer.rl.cpp
-	DoxyLexer.rl
+	Lexer.rl.cpp
+	Lexer.rl
 	)
 
 add_graco_double_step(
-	LuaParser.llk.h
-	LuaParser.llk.cpp
+	Parser.llk.h
+	Parser.llk.cpp
 	CppParser.h.in
 	CppParser.cpp.in
-	LuaParser.llk
+	Parser.llk
 	)
 
 axl_pop(CMAKE_CURRENT_BINARY_DIR)
@@ -114,14 +100,13 @@ axl_pop(CMAKE_CURRENT_BINARY_DIR)
 set(
 	GEN_H_LIST
 	${GEN_DIR}/version.h
-	${GEN_DIR}/LuaParser.llk.h
+	${GEN_DIR}/Parser.llk.h
 	)
 
 set(
 	GEN_CPP_LIST
-	${GEN_DIR}/LuaLexer.rl.cpp
-	${GEN_DIR}/DoxyLexer.rl.cpp
-	# ${GEN_DIR}/LuaParser.llk.cpp  # currently, cmake can't handle double-file output
+	${GEN_DIR}/Lexer.rl.cpp
+	# ${GEN_DIR}/Parser.llk.cpp  # currently, cmake can't handle double-file output
 	)
 
 axl_exclude_from_build(${GEN_CPP_LIST})  # include "*.rl.cpp" & "*.llk.cpp" manually
@@ -187,6 +172,7 @@ target_link_libraries(
 	luadoxyxml
 	axl_lex
 	axl_io
+	axl_dox
 	axl_core
 	)
 

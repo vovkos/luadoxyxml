@@ -11,9 +11,10 @@
 
 #include "pch.h"
 #include "CmdLine.h"
-#include "LuaLexer.h"
-#include "LuaParser.llk.h"
-#include "LuaParser.llk.cpp"
+#include "DoxyHost.h"
+#include "Lexer.h"
+#include "Parser.llk.h"
+#include "Parser.llk.cpp"
 #include "version.h"
 
 #define _PRINT_USAGE_IF_NO_ARGUMENTS 1
@@ -49,9 +50,15 @@ run(CmdLine* cmdLine)
 	bool result;
 
 	io::SimpleMappedFile file;
-	Module module;
-	LuaLexer lexer;
-	LuaParser parser(&module);
+	DoxyHost doxyHost;
+	Module module(&doxyHost);
+
+	Lexer lexer;
+	lexer.m_channelMask = TokenChannelMask_All; // include doxygen comments
+
+	Parser parser(&module);
+
+	doxyHost.setup(&module, &parser);
 
 	sl::ConstBoxIterator<sl::String> it = cmdLine->m_inputFileNameList.getHead();
 	for (; it; it++)
@@ -65,40 +72,39 @@ run(CmdLine* cmdLine)
 
 		sl::StringRef source((const char*)file.p(), file.getMappingSize());
 		lexer.create(fileName, source);
-		parser.create(SymbolKind_block);
+		parser.create(fileName, SymbolKind_block);
 
 		for (;;)
 		{
-			const LuaToken* token = lexer.getToken();
+			const Token* token = lexer.getToken();
 
 			sl::StringRef comment;
 			ModuleItem* lastDeclaredItem;
 
 			switch (token->m_token)
 			{
-			case LuaTokenKind_Error:
+			case TokenKind_Error:
 				err::setFormatStringError("invalid character '\\x%02x'", (uchar_t) token->m_data.m_integer);
 				lex::pushSrcPosError(fileName, token->m_pos);
 				return false;
 
-			case LuaTokenKind_DoxyComment_sl:
-			case LuaTokenKind_DoxyComment_ml:
+			case TokenKind_DoxyComment_sl:
+			case TokenKind_DoxyComment_ml:
 				comment = token->m_data.m_string;
 				lastDeclaredItem = NULL;
 
-				if (token->m_token == LuaTokenKind_DoxyComment_sl &&
-					!comment.isEmpty() && comment[0] == '<')
+				if (!comment.isEmpty() && comment[0] == '<')
 				{
 					lastDeclaredItem = parser.m_lastDeclaredItem;
 					comment = comment.getSubString(1);
 				}
 
-				/* parser.m_doxyParser.addComment(
+				parser.m_doxyParser.addComment(
 					comment,
 					token->m_pos,
-					isSingleLine,
+					token->m_tokenKind == TokenKind_DoxyComment_sl,
 					lastDeclaredItem
-					); */
+					);
 
 				break;
 
@@ -111,12 +117,20 @@ run(CmdLine* cmdLine)
 				}
 			}
 
-			if (token->m_token == LuaTokenKind_Eof) // EOF token must be parsed
+			if (token->m_token == TokenKind_Eof) // EOF token must be parsed
 				break;
 
 			lexer.nextToken();
 		}
 	}
+
+	if (cmdLine->m_outputFileName.isEmpty())
+		return true;
+
+	sl::String outputFileName = io::getFileName(cmdLine->m_outputFileName);
+	sl::String outputDir = io::getDir(cmdLine->m_outputFileName);
+
+	module.m_doxyModule.generateDocumentation(outputDir, outputFileName);
 
 	return true;
 }

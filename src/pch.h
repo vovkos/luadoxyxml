@@ -13,7 +13,11 @@
 
 #include "axl_sl_CmdLineParser.h"
 #include "axl_lex_RagelLexer.h"
+#include "axl_dox_Module.h"
+#include "axl_dox_Parser.h"
+#include "axl_dox_Host.h"
 #include "axl_io_MappedFile.h"
+#include "axl_io_FilePathUtils.h"
 #include "llk_Parser.h"
 
 using namespace axl;

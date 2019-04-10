@@ -10,64 +10,66 @@
 //..............................................................................
 
 #include "pch.h"
-#include "LuaParser.llk.h"
+#include "Parser.llk.h"
 
 //..............................................................................
 
-LuaParser::LuaParser(Module* module)
+Parser::Parser(Module* module):
+	m_doxyParser(&module->m_doxyModule)
 {
 	m_module = module;
 	m_lastDeclaredItem = NULL;
 	m_scopeLevel = 0;
 }
 
-bool
-LuaParser::variableDeclaration(
+Variable*
+Parser::variableDeclaration(
 	const Token::Pos& pos,
 	const sl::StringRef& name
 	)
 {
-	printf("(ln: %d col: %d): variable declaration: %s\n", pos.m_line, pos.m_col, name.sz());
-
 	Variable* variable = AXL_MEM_NEW(Variable);
-	variable->m_pos = pos;
 	variable->m_name = name;
-	m_module->m_variableList.insertTail(variable);
-	return true;
+	finalizeDeclaration(pos, name, variable);
+	return variable;
 }
 
-bool
-LuaParser::functionDeclaration(
+Function*
+Parser::functionDeclaration(
 	const Token::Pos& pos,
 	FunctionName* name,
 	FunctionArgList* argList
 	)
 {
-	printf("(ln: %d col: %d): function declaration: %s(", pos.m_line, pos.m_col, name->m_first.sz());
-
-	sl::BoxIterator<sl::StringRef> it = argList->m_list.getHead();
-	if (it)
-		printf("%s", it->sz());
-
-	for (it++; it; it++)
-		printf(", %s", it->sz());
-
-	if (argList->m_isVarArg)
-	{
-		if (argList->m_list.isEmpty())
-			printf(", ");
-
-		printf("...");
-	}
-
-	printf(")\n");
-
 	Function* function = AXL_MEM_NEW(Function);
-	function->m_pos = pos;
 	sl::takeOver(&function->m_name, name);
 	sl::takeOver(&function->m_argList, argList);
-	m_module->m_functionList.insertTail(function);
-	return true;
+	finalizeDeclaration(pos, function->m_name.getFullName(), function);
+	return function;
+}
+
+void
+Parser::finalizeDeclaration(
+	const Token::Pos& pos,
+	const sl::StringRef& name,
+	ModuleItem* item
+	)
+{
+	item->m_module = m_module;
+	item->m_fileName = m_fileName;
+	item->m_pos = pos;
+
+	dox::Block* block = m_doxyParser.popBlock();
+	if (block)
+	{
+		item->m_doxyBlock = block;
+		block->m_item = item;
+	}
+
+	m_module->m_itemList.insertTail(item);
+	m_module->m_itemMap[name] = item;
+
+	m_lastDeclaredItem = item;
 }
 
 //..............................................................................
