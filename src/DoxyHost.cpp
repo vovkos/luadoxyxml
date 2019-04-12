@@ -76,4 +76,19 @@ DoxyHost::generateGlobalNamespaceDocumentation(
 	return m_module->generateGlobalNamespaceDocumentation(outputDir, itemXml, indexXml);
 }
 
+void
+DoxyHost::processCustomCommand(
+	const sl::StringRef& commandName,
+	dox::BlockData* block
+	)
+{
+	CustomCommand command = CustomCommandNameMap::findValue(commandName, CustomCommand_Undefined);
+	switch (command)
+	{
+	case CustomCommand_TableType:
+		block->m_internalDescription += ":tabletype:";
+		break;
+	}
+}
+
 //..............................................................................

@@ -59,58 +59,61 @@ lit_sq = "'" ([^'\n\\] | esc)* (['\\] | nl);
 
 main := |*
 
-'goto'           { createToken(TokenKind_Goto); };
-'break'          { createToken(TokenKind_Break); };
-'return'         { createToken(TokenKind_Return); };
-'do'             { createToken(TokenKind_Do); };
-'end'            { createToken(TokenKind_End); };
-'while'          { createToken(TokenKind_While); };
-'repeat'         { createToken(TokenKind_Repeat); };
-'until'          { createToken(TokenKind_Until); };
-'if'             { createToken(TokenKind_If); };
-'then'           { createToken(TokenKind_Then); };
-'elseif'         { createToken(TokenKind_ElseIf); };
-'else'           { createToken(TokenKind_Else); };
-'for'            { createToken(TokenKind_For); };
-'function'       { createToken(TokenKind_Function); };
-'local'          { createToken(TokenKind_Local); };
-'in'             { createToken(TokenKind_In); };
-'nil'            { createToken(TokenKind_Nil); };
-'false'          { createToken(TokenKind_False); };
-'true'           { createToken(TokenKind_True); };
-'or'             { createToken(TokenKind_Or); };
-'and'            { createToken(TokenKind_And); };
-'not'            { createToken(TokenKind_Not); };
+'goto'          { createToken(TokenKind_Goto); };
+'break'         { createToken(TokenKind_Break); };
+'return'        { createToken(TokenKind_Return); };
+'do'            { createToken(TokenKind_Do); };
+'end'           { createToken(TokenKind_End); };
+'while'         { createToken(TokenKind_While); };
+'repeat'        { createToken(TokenKind_Repeat); };
+'until'         { createToken(TokenKind_Until); };
+'if'            { createToken(TokenKind_If); };
+'then'          { createToken(TokenKind_Then); };
+'elseif'        { createToken(TokenKind_ElseIf); };
+'else'          { createToken(TokenKind_Else); };
+'for'           { createToken(TokenKind_For); };
+'function'      { createToken(TokenKind_Function); };
+'local'         { createToken(TokenKind_Local); };
+'in'            { createToken(TokenKind_In); };
+'nil'           { createToken(TokenKind_Nil); };
+'false'         { createToken(TokenKind_False); };
+'true'          { createToken(TokenKind_True); };
+'or'            { createToken(TokenKind_Or); };
+'and'           { createToken(TokenKind_And); };
+'not'           { createToken(TokenKind_Not); };
 
-'::'             { createToken(TokenKind_Context); };
-'...'            { createToken(TokenKind_Ellipsis); };
-'<='             { createToken(TokenKind_Le); };
-'>='             { createToken(TokenKind_Ge); };
-'~='             { createToken(TokenKind_Ne); };
-'=='             { createToken(TokenKind_Eq); };
-'<<'             { createToken(TokenKind_Shl); };
-'>>'             { createToken(TokenKind_Shr); };
-'..'             { createToken(TokenKind_Concat); };
-'//'             { createToken(TokenKind_FloorDiv); };
+'::'            { createToken(TokenKind_Context); };
+'...'           { createToken(TokenKind_Ellipsis); };
+'<='            { createToken(TokenKind_Le); };
+'>='            { createToken(TokenKind_Ge); };
+'~='            { createToken(TokenKind_Ne); };
+'=='            { createToken(TokenKind_Eq); };
+'<<'            { createToken(TokenKind_Shl); };
+'>>'            { createToken(TokenKind_Shr); };
+'..'            { createToken(TokenKind_Concat); };
+'//'            { createToken(TokenKind_FloorDiv); };
 
-id               { createStringToken(TokenKind_Identifier); };
-lit_sq | lit_dq  { createStringToken(TokenKind_String, 1, 1); };
-dec+             { createIntegerToken (10); };
-'0' [xX] hex+    { createIntegerToken (16, 2); };
+id              { createStringToken(TokenKind_Identifier); };
+lit_sq | lit_dq { createStringToken(TokenKind_String, 1, 1); };
+dec+            { createIntegerToken (10); };
+'0' [xX] hex+   { createIntegerToken (16, 2); };
 dec+ ('.' dec*) | ([eE] [+\-]? dec+)
-				 { createFpToken (); };
+				{ createFpToken (); };
 
-'--!' [^\n]*     { createDoxyCommentToken(TokenKind_DoxyComment_sl); };
-'--[[!' (any | nl)* :>> '--]]'
-				 { createDoxyCommentToken(TokenKind_DoxyComment_ml); };
+'--!' [^\n]*    { createDoxyCommentToken(TokenKind_DoxyComment_sl); };
 
-'--' [^\n]*      ;
-'--[[' (any | nl)* :>> '--]]'
-				 ;
+'--[[!' @(Comment, 2) (any | nl)* :>> '--]]'
+				{ createDoxyCommentToken(TokenKind_DoxyComment_ml); };
+
+'--[[' @(Comment, 1) (any | nl)* :>> '--]]'
+				;
+
+'--' [^\n]* @(Comment, 0)
+				;
 
 ws | nl ;
-print            { createToken(ts[0]); };
-any              { createErrorToken(ts[0]); };
+print           { createToken(ts[0]); };
+any             { createErrorToken(ts[0]); };
 
 *|;
 

@@ -82,6 +82,27 @@ public:
 		sl::String* itemXml,
 		sl::String* indexXml
 		);
+
+	virtual
+	void
+	processCustomCommand(
+		const sl::StringRef& command,
+		dox::BlockData* block
+		);
 };
+
+//..............................................................................
+
+enum CustomCommand
+{
+	CustomCommand_Undefined,
+	CustomCommand_TableType,
+};
+
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+AXL_SL_BEGIN_STRING_HASH_TABLE(CustomCommandNameMap, CustomCommand)
+	AXL_SL_HASH_TABLE_ENTRY("tabletype", CustomCommand_TableType)
+AXL_SL_END_STRING_HASH_TABLE()
 
 //..............................................................................

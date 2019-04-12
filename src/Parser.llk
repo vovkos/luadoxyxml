@@ -47,14 +47,23 @@ Members2
 		llk::Parser<Parser, Token>::create(startSymbolKind);
 	}
 
+	Table*
+	createTable();
+
+	Field*
+	declareField(
+		const Token::Pos& pos,
+		const sl::StringRef& name
+		);
+
 	Variable*
-	variableDeclaration(
+	declareVariable(
 		const Token::Pos& pos,
 		const sl::StringRef& name
 		);
 
 	Function*
-	functionDeclaration(
+	declareFunction(
 		const Token::Pos& pos,
 		FunctionName* name,
 		FunctionArgList* argList
@@ -63,8 +72,8 @@ Members2
 	void
 	finalizeDeclaration(
 		const Token::Pos& pos,
-		const sl::StringRef& name,
-		ModuleItem* item
+		ModuleItem* item,
+		const sl::StringRef& name = NULL
 		);
 }
 
@@ -124,7 +133,7 @@ statement
 		function_name function_body
 			{
 				if (!--m_scopeLevel)
-					return functionDeclaration($1.m_pos, &$2.m_name, &$3.m_argList);
+					return declareFunction($1.m_pos, &$2.m_name, &$3.m_argList);
 			}
 	|	TokenKind_Local
 			{
@@ -186,43 +195,97 @@ name_list
 	;
 
 expression_stmt
-	:	postfix_expr (',' postfix_expr)*
-		('='
+	local
+	{
+		Variable* $variable;
+	}
+	enter
+	{
+		$variable = NULL;
+	}
+	:	postfix_expr
 			{
-				if (!m_scopeLevel && !$1.m_name.isEmpty())
-					return variableDeclaration($1.m_pos, $1.m_name);
+				if (!m_scopeLevel && $1.m_value.m_valueKind == ValueKind_Variable)
+					$variable = declareVariable($1.m_pos, $1.m_value.m_source);
 			}
-		expression_list
+		(',' postfix_expr
+			{
+				$variable = NULL;
+			}
+		)*
+		('='
+		expression_list $e
+			{
+				if ($variable)
+					$variable->m_initializer = $e.m_value;
+			}
 		)?
 	;
 
+class
+{
+	Token::Pos m_pos;
+	Value m_value;
+}
 expression_list
-	:	expression (',' expression)*
+	:	expression
+			{
+				$.m_pos = $1.m_pos;
+				$.m_value = $1.m_value;
+			}
+		(',' expression
+			{
+				$.m_value.clear();
+			}
+		)*
 	;
 
+class
+{
+	Token::Pos m_pos;
+	Value m_value;
+}
 expression
-	:	unary_expr (bin_op expression)*
+	:	unary_expr
+			{
+				$.m_pos = $1.m_pos;
+				$.m_value = $1.m_value;
+			}
+		(bin_op expression
+			{
+				$.m_value.clear();
+			}
+		)*
 	;
 
+class
+{
+	Token::Pos m_pos;
+	Value m_value;
+}
 unary_expr
 	:	postfix_expr
+			{
+				$.m_pos = $1.m_pos;
+				$.m_value = $1.m_value;
+			}
 	|	un_op unary_expr
 	;
 
 class
 {
 	Token::Pos m_pos;
-	sl::StringRef m_name;
+	Value m_value;
 }
 postfix_expr
 	: 	primary_expr
 			{
 				$.m_pos = $1.m_pos;
-				$.m_name = $1.m_name;
+				$.m_value = $1.m_value;
 			}
 		(postfix_op
 			{
-				$.m_name.clear();
+				$.m_value.clear();
 			}
 		)*
 	;
@@ -236,7 +299,7 @@ postfix_op
 class
 {
 	Token::Pos m_pos;
-	sl::StringRef m_name;
+	Value m_value;
 }
 primary_expr
 	:	TokenKind_Nil
@@ -247,11 +310,16 @@ primary_expr
 	|	TokenKind_Identifier
 			{
 				$.m_pos = $1.m_pos;
-				$.m_name = $1.m_data.m_string;
+				$.m_value.m_valueKind = ValueKind_Variable;
+				$.m_value.m_source = $1.m_data.m_string;
 			}
 	|	TokenKind_Ellipsis
 	|	TokenKind_Function function_body
 	|	table_constructor
+			{
+				$.m_pos = $1.m_pos;
+				$.m_value = $1.m_value;
+			}
 	|	'(' expression ')'
 	;
 
@@ -266,47 +334,82 @@ class
 	FunctionArgList m_argList;
 }
 function_body
-	:	'('
-		(parameter_list
+	:	'(' parameter_list<&$.m_argList>? ')' block TokenKind_End
+	;
+
+parameter_list<FunctionArgList* $argList>
+	:	parameter<$argList> (',' parameter<$argList>)*
+	;
+
+parameter<FunctionArgList* $argList>
+	:	TokenKind_Identifier
 			{
-				sl::takeOver(&$.m_argList, &$2.m_argList);
+				$argList->m_list.insertTail($1.m_data.m_string);
 			}
-		)?
-		')' block TokenKind_End
+	|	TokenKind_Ellipsis
+			{
+				$argList->m_isVarArg = true;
+			}
 	;
 
 class
 {
-	FunctionArgList m_argList;
+	Token::Pos m_pos;
+	Value m_value;
 }
-parameter_list
-	:	name_list
-			{
-				sl::takeOver(&$.m_argList.m_list, &$1.m_nameList);
-			}
-		(',' TokenKind_Ellipsis
-			{
-				$.m_argList.m_isVarArg = true;
-			}
-		)?
-	|	TokenKind_Ellipsis
-			{
-				$.m_argList.m_isVarArg = true;
-			}
-	;
-
 table_constructor
-	:	'{' field_list? '}'
+	:	'{'
+			{
+				$.m_pos = $1.m_pos;
+				$.m_value.m_valueKind = ValueKind_Table;
+				$.m_value.m_table = createTable();
+			}
+		field_list<$.m_value.m_table>?
+		'}'
+			{
+				$.m_value.m_source = sl::StringRef($1.m_pos.m_p, $3.m_pos.m_p - $1.m_pos.m_p + 1);
+			}
 	;
 
-field_list
-	:	field (field_sep field?)*
+field_list<Table* $table>
+	:	field
+			{
+				$table->m_fieldArray.append($1.m_field);
+			}
+		(field_sep
+		(field
+			{
+				$1.m_field->m_index = $table->m_fieldArray.getCount();
+				$table->m_fieldArray.append($3.m_field);
+			}
+		)?)*
 	;
 
+class
+{
+	Field* m_field;
+}
 field
-	:	'[' expression ']' '=' expression
-	|	TokenKind_Identifier '=' expression
+	enter
+	{
+		$.m_field = NULL;
+	}
+	:	'[' expression ']'
+			{
+				if ($2.m_value.m_valueKind == ValueKind_Variable)
+					$.m_field = declareField($2.m_pos, $2.m_value.m_source);
+			}
+		'=' expression
+	|	TokenKind_Identifier
+			{
+				$.m_field = declareField($1.m_pos, $1.m_data.m_string);
+			}
+		'=' expression
 	|	expression
+			{
+				if ($1.m_value.m_valueKind == ValueKind_Variable)
+					$.m_field = declareField($1.m_pos, $1.m_value.m_source);
+			}
 	;
 
 field_sep

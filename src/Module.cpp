@@ -14,6 +14,25 @@
 
 //..............................................................................
 
+void
+Value::clear()
+{
+	m_valueKind = ValueKind_Undefined;
+	m_table = NULL;
+	m_source.clear();
+}
+
+//..............................................................................
+
+ModuleItem::ModuleItem()
+{
+	m_itemKind = ModuleItemKind_Undefined;
+	m_module = NULL;
+	m_doxyBlock = NULL;
+}
+
+//..............................................................................
+
 FunctionName&
 FunctionName::operator = (const FunctionName& src)
 {
@@ -99,10 +118,21 @@ Function::generateDocumentation(
 sl::String
 Variable::createDoxyRefId()
 {
-	sl::String refId = "variable_" + m_name;
+	sl::String refId = isTableType() ? "struct_" : "variable_";
+	refId += m_name;
 	refId.makeLowerCase();
 
 	return m_module->m_doxyModule.adjustRefId(refId);
+}
+
+bool
+Variable::isTableType()
+{
+	if (!m_initializer.m_table)
+		return false;
+
+	m_module->m_doxyModule.getHost()->getItemBlock(this);
+	return m_doxyBlock->getInternalDescription().find(":tabletype:") != -1;
 }
 
 bool
@@ -112,20 +142,96 @@ Variable::generateDocumentation(
 	sl::String* indexXml
 	)
 {
-	dox::Block* doxyBlock = m_module->m_doxyModule.getHost()->getItemBlock(this);
+	return isTableType()?
+		generateTableTypeDocumentation(outputDir, itemXml, indexXml) :
+		generateVariableDocumentation(outputDir, itemXml, indexXml);
+}
 
-	itemXml->format("<memberdef kind='variable' id='%s'>\n", doxyBlock->getRefId ().sz());
+bool
+Variable::generateVariableDocumentation(
+	const sl::StringRef& outputDir,
+	sl::String* itemXml,
+	sl::String* indexXml
+	)
+{
+	m_module->m_doxyModule.getHost()->getItemBlock(this);
+
+	itemXml->format("<memberdef kind='variable' id='%s'>\n", m_doxyBlock->getRefId ().sz());
 	itemXml->appendFormat("<name>%s</name>\n", m_name.sz());
 
-	if (!m_initializer.isEmpty())
-		itemXml->appendFormat("<initializer>= %s</initializer>\n", m_initializer.sz());
+	if (!m_initializer.m_source.isEmpty())
+		itemXml->appendFormat("<initializer>= %s</initializer>\n", m_initializer.m_source.sz());
 
-	itemXml->append(doxyBlock->getImportString());
-	itemXml->append(doxyBlock->getDescriptionString());
+	itemXml->append(m_doxyBlock->getImportString());
+	itemXml->append(m_doxyBlock->getDescriptionString());
 	itemXml->append(getDoxyLocationString());
 	itemXml->append("</memberdef>\n");
 
 	return true;
+}
+
+bool
+Variable::generateTableTypeDocumentation(
+	const sl::StringRef& outputDir,
+	sl::String* itemXml,
+	sl::String* indexXml
+	)
+{
+	ASSERT(m_initializer.m_table && m_doxyBlock);
+
+	indexXml->appendFormat(
+		"<compound kind='struct' refid='%s'><name>%s</name></compound>\n",
+		m_doxyBlock->getRefId().sz(),
+		m_name.sz()
+		);
+
+	itemXml->format(
+		"<compounddef kind='struct' id='%s' language='Jancy'>\n"
+		"<compoundname>%s</compoundname>\n",
+		m_doxyBlock->getRefId().sz(),
+		m_name.sz()
+		);
+
+	itemXml->append("<sectiondef>\n");
+
+	sl::String fieldXml;
+	size_t count = m_initializer.m_table->m_fieldArray.getCount();
+	for (size_t i = 0; i < count; i++)
+	{
+		Field* field = m_initializer.m_table->m_fieldArray[i];
+		if (!field->m_name.isEmpty())
+		{
+			field->generateDocumentation(outputDir, &fieldXml, indexXml);
+			itemXml->append(fieldXml);
+		}
+	}
+
+	itemXml->append("</sectiondef>\n");
+
+	sl::String footnoteXml = m_doxyBlock->getFootnoteString();
+	if (!footnoteXml.isEmpty())
+	{
+		itemXml->append("<sectiondef>\n");
+		itemXml->append(footnoteXml);
+		itemXml->append("</sectiondef>\n");
+	}
+
+	itemXml->append(m_doxyBlock->getImportString());
+	itemXml->append(m_doxyBlock->getDescriptionString());
+	itemXml->append(getDoxyLocationString());
+	itemXml->append("</compounddef>\n");
+
+	return true;
+}
+//..............................................................................
+
+sl::String
+Field::createDoxyRefId()
+{
+	sl::String refId = "field_" + m_name;
+	refId.makeLowerCase();
+
+	return m_module->m_doxyModule.adjustRefId(refId);
 }
 
 //..............................................................................
@@ -156,10 +262,10 @@ Module::generateGlobalNamespaceDocumentation(
 	sl::String sectionDef;
 	sl::String memberXml;
 
-	sl::Iterator<ModuleItem> it = m_itemList.getHead();
+	sl::StringHashTableIterator<ModuleItem*> it = m_itemMap.getHead();
 	for (; it; it++)
 	{
-		ModuleItem* item = *it;
+		ModuleItem* item = it->m_value;
 
 		result = item->generateDocumentation(outputDir, &memberXml, indexXml);
 		if (!result)
@@ -173,7 +279,9 @@ Module::generateGlobalNamespaceDocumentation(
 		if (doxyGroup)
 			doxyGroup->addItem(item);
 
-		bool isCompoundFile = false; // not yet
+		bool isCompoundFile =
+			item->m_itemKind == ModuleItemKind_Variable &&
+			((Variable*)item)->isTableType();
 
 		if (!isCompoundFile)
 		{
@@ -198,7 +306,9 @@ Module::generateGlobalNamespaceDocumentation(
 		}
 	}
 
+	itemXml->append("<sectiondef>\n");
 	itemXml->append(sectionDef);
+	itemXml->append("</sectiondef>\n");
 	itemXml->append("</compounddef>\n");
 	return true;
 }

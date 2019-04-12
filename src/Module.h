@@ -14,21 +14,57 @@
 #include "Lexer.h"
 
 class Module;
+struct Table;
 
 //..............................................................................
 
+enum ValueKind
+{
+	ValueKind_Undefined,
+	ValueKind_Variable,
+	ValueKind_Table,
+};
+
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+struct Value
+{
+	ValueKind m_valueKind;
+	sl::StringRef m_source;
+	Table* m_table;
+
+	Value()
+	{
+		m_valueKind = ValueKind_Undefined;
+		m_table = NULL;
+	}
+
+	void
+	clear();
+};
+
+//..............................................................................
+
+enum ModuleItemKind
+{
+	ModuleItemKind_Undefined,
+	ModuleItemKind_Variable,
+	ModuleItemKind_Function,
+	ModuleItemKind_Table,
+	ModuleItemKind_Field,
+};
+
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
 struct ModuleItem: sl::ListLink
 {
+	ModuleItemKind m_itemKind;
 	Module* m_module;
 	sl::String m_fileName;
 	Token::Pos m_pos;
 	dox::Block* m_doxyBlock;
 
-	ModuleItem()
-	{
-		m_module = NULL;
-		m_doxyBlock = NULL;
-	}
+	ModuleItem();
 
 	virtual
 	~ModuleItem()
@@ -135,6 +171,11 @@ struct Function: ModuleItem
 	FunctionName m_name;
 	FunctionArgList m_argList;
 
+	Function()
+	{
+		m_itemKind = ModuleItemKind_Variable;
+	}
+
 	virtual
 	sl::String
 	createDoxyRefId();
@@ -152,14 +193,68 @@ struct Function: ModuleItem
 
 struct Variable: ModuleItem
 {
-	sl::String m_name;
-	sl::String m_initializer;
+	sl::StringRef m_name;
+	Value m_initializer;
+
+	Variable()
+	{
+		m_itemKind = ModuleItemKind_Variable;
+	}
+
+	bool
+	isTableType();
 
 	virtual
 	sl::String
 	createDoxyRefId();
 
 	virtual
+	bool
+	generateDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
+
+protected:
+	bool
+	generateVariableDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
+
+	bool
+	generateTableTypeDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
+};
+
+//..............................................................................
+
+struct Field: Variable
+{
+	size_t m_index;
+
+	Field()
+	{
+		m_itemKind = ModuleItemKind_Field;
+		m_index = 0;
+	}
+
+	virtual
+	sl::String
+	createDoxyRefId();
+};
+
+//..............................................................................
+
+struct Table: sl::ListLink
+{
+	sl::Array<Field*> m_fieldArray;
+
 	bool
 	generateDocumentation(
 		const sl::StringRef& outputDir,
@@ -175,6 +270,7 @@ class Module
 	friend class Parser;
 
 protected:
+	sl::List<Table> m_tableList;
 	sl::List<ModuleItem> m_itemList;
 	sl::StringHashTable<ModuleItem*> m_itemMap;
 

@@ -49,7 +49,7 @@ CmdLineParser::finalize()
 	else
 	{
 		if (m_cmdLine->m_outputFileName.isEmpty())
-			m_cmdLine->m_outputFileName = "rst/index.rst";
+			m_cmdLine->m_outputFileName = "xml/index.xml";
 	}
 
 	return true;
