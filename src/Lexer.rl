@@ -102,10 +102,10 @@ dec+ ('.' dec*) | ([eE] [+\-]? dec+)
 
 '--!' [^\n]*    { createDoxyCommentToken(TokenKind_DoxyComment_sl); };
 
-'--[[!' @(Comment, 2) (any | nl)* :>> '--]]'
+'--[[!' @(Comment, 2) (any | nl)* :>> ']]'
 				{ createDoxyCommentToken(TokenKind_DoxyComment_ml); };
 
-'--[[' @(Comment, 1) (any | nl)* :>> '--]]'
+'--[[' @(Comment, 1) (any | nl)* :>> ']]'
 				;
 
 '--' [^\n]* @(Comment, 0)
