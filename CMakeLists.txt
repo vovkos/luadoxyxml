@@ -19,6 +19,10 @@ include(axl_cmake.cmake NO_POLICY_SCOPE)
 
 include(version.cmake)
 
+set(BIN_BASE_DIR ${CMAKE_CURRENT_BINARY_DIR}/bin)
+set(BIN_DIR      ${CMAKE_CURRENT_BINARY_DIR}/bin/${CONFIGURATION})
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${BIN_BASE_DIR}/${CONFIGURATION_SCG})
+
 add_subdirectory(src)
 
 #...............................................................................
