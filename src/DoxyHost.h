@@ -96,13 +96,13 @@ public:
 enum CustomCommand
 {
 	CustomCommand_Undefined,
-	CustomCommand_TableType,
+	CustomCommand_LuaStruct,
 };
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 AXL_SL_BEGIN_STRING_HASH_TABLE(CustomCommandNameMap, CustomCommand)
-	AXL_SL_HASH_TABLE_ENTRY("tabletype", CustomCommand_TableType)
+	AXL_SL_HASH_TABLE_ENTRY("luastruct", CustomCommand_LuaStruct)
 AXL_SL_END_STRING_HASH_TABLE()
 
 //..............................................................................

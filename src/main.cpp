@@ -57,14 +57,15 @@ run(CmdLine* cmdLine)
 	lexer.m_channelMask = TokenChannelMask_All; // include doxygen comments
 
 	Parser parser(&module);
-
 	doxyHost.setup(&module, &parser);
 
 	sl::ConstBoxIterator<sl::String> it = cmdLine->m_inputFileNameList.getHead();
 	for (; it; it++)
 	{
 		const sl::String& fileName = *it;
-		printf("Parsing %s...\n", fileName.sz());
+
+		if (!(cmdLine->m_flags & CmdLineFlag_DoxygenFilter))
+			printf("Parsing %s...\n", fileName.sz());
 
 		result = file.open(fileName, io::FileFlag_ReadOnly);
 		if (!result)
@@ -91,6 +92,7 @@ run(CmdLine* cmdLine)
 			case TokenKind_DoxyComment_sl:
 			case TokenKind_DoxyComment_ml:
 				comment = token->m_data.m_string;
+
 				lastDeclaredItem = NULL;
 
 				if (!comment.isEmpty() && comment[0] == '<')
@@ -123,6 +125,9 @@ run(CmdLine* cmdLine)
 			lexer.nextToken();
 		}
 	}
+
+	if (cmdLine->m_flags & CmdLineFlag_DoxygenFilter)
+		module.generateDoxygenFilterOutput();
 
 	if (cmdLine->m_outputFileName.isEmpty())
 		return true;

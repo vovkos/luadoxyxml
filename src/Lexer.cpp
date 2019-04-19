@@ -68,7 +68,7 @@ Lexer::createDoxyCommentToken(int tokenKind)
 		ASSERT(ts[2] == '[' && ts[3] == '[' && ts[4] == '!');
 		ASSERT(te[-1] == ']' && te[-2] == ']');
 		left = 5;
-		right = 4;
+		right = 2;
 		break;
 
 	default:

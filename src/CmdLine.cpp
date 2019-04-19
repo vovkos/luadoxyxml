@@ -33,6 +33,10 @@ CmdLineParser::onSwitch(
 	case CmdLineSwitchKind_OutputFileName:
 		m_cmdLine->m_outputFileName = value;
 		break;
+
+	case CmdLineSwitchKind_DoxygenFilter:
+		m_cmdLine->m_flags |= CmdLineFlag_DoxygenFilter;
+		break;
 	}
 
 	return true;
@@ -48,7 +52,7 @@ CmdLineParser::finalize()
 	}
 	else
 	{
-		if (m_cmdLine->m_outputFileName.isEmpty())
+		if (m_cmdLine->m_outputFileName.isEmpty() && (!(m_cmdLine->m_flags & CmdLineFlag_DoxygenFilter)))
 			m_cmdLine->m_outputFileName = g_defaultOutputFileName;
 	}
 

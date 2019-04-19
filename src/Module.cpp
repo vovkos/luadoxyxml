@@ -31,6 +31,175 @@ ModuleItem::ModuleItem()
 	m_doxyBlock = NULL;
 }
 
+void
+ModuleItem::printDoxygenFilterComment(const sl::StringRef& indent)
+{
+	if (m_doxyBlock)
+		printf("%s/*! %s */\n", indent.sz(), m_doxyBlock->getSource().getTrimmedString().sz());
+}
+
+//..............................................................................
+
+sl::String
+Variable::createDoxyRefId()
+{
+	sl::String refId;
+
+	switch (m_itemKind)
+	{
+	case ModuleItemKind_Field:
+		refId = "field_";
+		break;
+
+	case ModuleItemKind_FunctionParam:
+		refId = "param_";
+		break;
+
+	default:
+		refId = isLuaStruct() ? "struct_" : "variable_";
+	}
+
+	refId += m_name;
+	refId.makeLowerCase();
+
+	return m_module->m_doxyModule.adjustRefId(refId);
+}
+
+bool
+Variable::isLuaStruct()
+{
+	if (!m_initializer.m_table)
+		return false;
+
+	m_module->m_doxyModule.getHost()->getItemBlock(this);
+	return m_doxyBlock->getInternalDescription().find(":luastruct:") != -1;
+}
+
+bool
+Variable::generateDocumentation(
+	const sl::StringRef& outputDir,
+	sl::String* itemXml,
+	sl::String* indexXml
+	)
+{
+	return isLuaStruct()?
+		generateLuaStructDocumentation(outputDir, itemXml, indexXml) :
+		generateVariableDocumentation(outputDir, itemXml, indexXml);
+}
+
+void
+Variable::generateDoxygenFilterOutput(const sl::StringRef& indent)
+{
+	printDoxygenFilterComment();
+
+	if (isLuaStruct())
+		generateLuaStructDoxygenFilterOutput(indent);
+	else
+		generateVariableDoxygenFilterOutput(indent);
+}
+
+bool
+Variable::generateVariableDocumentation(
+	const sl::StringRef& outputDir,
+	sl::String* itemXml,
+	sl::String* indexXml
+	)
+{
+	m_module->m_doxyModule.getHost()->getItemBlock(this);
+
+	itemXml->format("<memberdef kind='variable' id='%s'>\n", m_doxyBlock->getRefId ().sz());
+	itemXml->appendFormat("<name>%s</name>\n", m_name.sz());
+
+	if (!m_initializer.m_source.isEmpty())
+		itemXml->appendFormat("<initializer>= %s</initializer>\n", m_initializer.m_source.sz());
+
+	itemXml->append(m_doxyBlock->getImportString());
+	itemXml->append(m_doxyBlock->getDescriptionString());
+	itemXml->append(getLocationString());
+	itemXml->append("</memberdef>\n");
+
+	return true;
+}
+
+bool
+Variable::generateLuaStructDocumentation(
+	const sl::StringRef& outputDir,
+	sl::String* itemXml,
+	sl::String* indexXml
+	)
+{
+	ASSERT(m_initializer.m_table && m_doxyBlock);
+
+	indexXml->appendFormat(
+		"<compound kind='struct' refid='%s'><name>%s</name></compound>\n",
+		m_doxyBlock->getRefId().sz(),
+		m_name.sz()
+		);
+
+	itemXml->format(
+		"<compounddef kind='struct' id='%s' language='Lua'>\n"
+		"<compoundname>%s</compoundname>\n",
+		m_doxyBlock->getRefId().sz(),
+		m_name.sz()
+		);
+
+	itemXml->append("<sectiondef>\n");
+
+	sl::String fieldXml;
+	size_t count = m_initializer.m_table->m_fieldArray.getCount();
+	for (size_t i = 0; i < count; i++)
+	{
+		Variable* field = m_initializer.m_table->m_fieldArray[i];
+		if (!field->m_name.isEmpty())
+		{
+			field->generateDocumentation(outputDir, &fieldXml, indexXml);
+			itemXml->append(fieldXml);
+		}
+	}
+
+	itemXml->append("</sectiondef>\n");
+
+	sl::String footnoteXml = m_doxyBlock->getFootnoteString();
+	if (!footnoteXml.isEmpty())
+	{
+		itemXml->append("<sectiondef>\n");
+		itemXml->append(footnoteXml);
+		itemXml->append("</sectiondef>\n");
+	}
+
+	itemXml->append(m_doxyBlock->getImportString());
+	itemXml->append(m_doxyBlock->getDescriptionString());
+	itemXml->append(getLocationString());
+	itemXml->append("</compounddef>\n");
+
+	return true;
+}
+
+void
+Variable::generateVariableDoxygenFilterOutput(const sl::StringRef& indent)
+{
+	printf("%sint %s", indent.sz(), m_name.sz());
+
+	if (m_itemKind != ModuleItemKind_FunctionParam)
+		printf(";\n");
+}
+
+void
+Variable::generateLuaStructDoxygenFilterOutput(const sl::StringRef& indent)
+{
+	printf("struct %s\n{\n", m_name.sz());
+
+	size_t count = m_initializer.m_table->m_fieldArray.getCount();
+	for (size_t i = 0; i < count; i++)
+	{
+		Variable* field = m_initializer.m_table->m_fieldArray[i];
+		if (!field->m_name.isEmpty())
+			field->generateDoxygenFilterOutput("\t");
+	}
+
+	printf("};\n\n");
+}
+
 //..............................................................................
 
 FunctionName&
@@ -69,20 +238,6 @@ FunctionName::getFullName() const
 
 //..............................................................................
 
-FunctionArgList&
-FunctionArgList::operator = (const FunctionArgList& src)
-{
-	m_isVarArg = src.m_isVarArg;
-
-	sl::ConstBoxIterator<sl::StringRef> it = src.m_list.getHead();
-	for (; it; it++)
-		m_list.insertTail(*it);
-
-	return *this;
-}
-
-//..............................................................................
-
 sl::String
 Function::createDoxyRefId()
 {
@@ -105,133 +260,69 @@ Function::generateDocumentation(
 
 	itemXml->format("<memberdef kind='function' id='%s'>\n", doxyBlock->getRefId ().sz());
 	itemXml->appendFormat("<name>%s</name>\n", m_name.getFullName().sz());
-	itemXml->append(doxyBlock->getImportString());
-	itemXml->append(doxyBlock->getDescriptionString());
-	itemXml->append(getDoxyLocationString());
-	itemXml->append("</memberdef>\n");
 
-	return true;
-}
-
-//..............................................................................
-
-sl::String
-Variable::createDoxyRefId()
-{
-	sl::String refId = isTableType() ? "struct_" : "variable_";
-	refId += m_name;
-	refId.makeLowerCase();
-
-	return m_module->m_doxyModule.adjustRefId(refId);
-}
-
-bool
-Variable::isTableType()
-{
-	if (!m_initializer.m_table)
-		return false;
-
-	m_module->m_doxyModule.getHost()->getItemBlock(this);
-	return m_doxyBlock->getInternalDescription().find(":tabletype:") != -1;
-}
-
-bool
-Variable::generateDocumentation(
-	const sl::StringRef& outputDir,
-	sl::String* itemXml,
-	sl::String* indexXml
-	)
-{
-	return isTableType()?
-		generateTableTypeDocumentation(outputDir, itemXml, indexXml) :
-		generateVariableDocumentation(outputDir, itemXml, indexXml);
-}
-
-bool
-Variable::generateVariableDocumentation(
-	const sl::StringRef& outputDir,
-	sl::String* itemXml,
-	sl::String* indexXml
-	)
-{
-	m_module->m_doxyModule.getHost()->getItemBlock(this);
-
-	itemXml->format("<memberdef kind='variable' id='%s'>\n", m_doxyBlock->getRefId ().sz());
-	itemXml->appendFormat("<name>%s</name>\n", m_name.sz());
-
-	if (!m_initializer.m_source.isEmpty())
-		itemXml->appendFormat("<initializer>= %s</initializer>\n", m_initializer.m_source.sz());
-
-	itemXml->append(m_doxyBlock->getImportString());
-	itemXml->append(m_doxyBlock->getDescriptionString());
-	itemXml->append(getDoxyLocationString());
-	itemXml->append("</memberdef>\n");
-
-	return true;
-}
-
-bool
-Variable::generateTableTypeDocumentation(
-	const sl::StringRef& outputDir,
-	sl::String* itemXml,
-	sl::String* indexXml
-	)
-{
-	ASSERT(m_initializer.m_table && m_doxyBlock);
-
-	indexXml->appendFormat(
-		"<compound kind='struct' refid='%s'><name>%s</name></compound>\n",
-		m_doxyBlock->getRefId().sz(),
-		m_name.sz()
-		);
-
-	itemXml->format(
-		"<compounddef kind='struct' id='%s' language='Jancy'>\n"
-		"<compoundname>%s</compoundname>\n",
-		m_doxyBlock->getRefId().sz(),
-		m_name.sz()
-		);
-
-	itemXml->append("<sectiondef>\n");
-
-	sl::String fieldXml;
-	size_t count = m_initializer.m_table->m_fieldArray.getCount();
+	size_t count = m_paramArray.m_array.getCount();
 	for (size_t i = 0; i < count; i++)
 	{
-		Field* field = m_initializer.m_table->m_fieldArray[i];
-		if (!field->m_name.isEmpty())
-		{
-			field->generateDocumentation(outputDir, &fieldXml, indexXml);
-			itemXml->append(fieldXml);
-		}
+		Variable* arg = m_paramArray.m_array[i];
+
+		itemXml->appendFormat(
+			"<param>\n"
+			"<declname>%s</declname>\n",
+			arg->m_name.sz()
+			);
+
+		if (!arg->m_initializer.m_source.isEmpty())
+			itemXml->appendFormat(
+				"<defval>%s</defval>\n",
+				arg->m_initializer.m_source.sz()
+				);
+
+		if (arg->m_doxyBlock)
+			itemXml->append(arg->m_doxyBlock->getDescriptionString());
+
+		itemXml->append("</param>\n");
 	}
 
-	itemXml->append("</sectiondef>\n");
+	if (m_paramArray.m_isVarArg)
+		itemXml->append(
+			"<param>\n"
+			"<type>...</type>\n"
+			"</param>\n"
+			);
 
-	sl::String footnoteXml = m_doxyBlock->getFootnoteString();
-	if (!footnoteXml.isEmpty())
-	{
-		itemXml->append("<sectiondef>\n");
-		itemXml->append(footnoteXml);
-		itemXml->append("</sectiondef>\n");
-	}
-
-	itemXml->append(m_doxyBlock->getImportString());
-	itemXml->append(m_doxyBlock->getDescriptionString());
-	itemXml->append(getDoxyLocationString());
-	itemXml->append("</compounddef>\n");
-
+	itemXml->append(doxyBlock->getImportString());
+	itemXml->append(doxyBlock->getDescriptionString());
+	itemXml->append(getLocationString());
+	itemXml->append("</memberdef>\n");
 	return true;
 }
-//..............................................................................
 
-sl::String
-Field::createDoxyRefId()
+void
+Function::generateDoxygenFilterOutput(const sl::StringRef& indent)
 {
-	sl::String refId = "field_" + m_name;
-	refId.makeLowerCase();
+	printDoxygenFilterComment();
+	printf("int %s(\n", m_name.getFullName().sz());
 
-	return m_module->m_doxyModule.adjustRefId(refId);
+	if (!m_paramArray.m_array.isEmpty())
+	{
+		m_paramArray.m_array[0]->generateDoxygenFilterOutput("\t");
+
+		size_t count = m_paramArray.m_array.getCount();
+		for (size_t i = 1; i < count; i++)
+		{
+			printf(",\n");
+			m_paramArray.m_array[i]->generateDoxygenFilterOutput("\t");
+		}
+
+		printf(m_paramArray.m_isVarArg ? ",\n\t...\n\t" : "\n\t");
+	}
+	else if (m_paramArray.m_isVarArg)
+	{
+		printf("...");
+	}
+
+	printf(");\n\n");
 }
 
 //..............................................................................
@@ -281,7 +372,7 @@ Module::generateGlobalNamespaceDocumentation(
 
 		bool isCompoundFile =
 			item->m_itemKind == ModuleItemKind_Variable &&
-			((Variable*)item)->isTableType();
+			((Variable*)item)->isLuaStruct();
 
 		if (!isCompoundFile)
 		{
@@ -311,6 +402,14 @@ Module::generateGlobalNamespaceDocumentation(
 	itemXml->append("</sectiondef>\n");
 	itemXml->append("</compounddef>\n");
 	return true;
+}
+
+void
+Module::generateDoxygenFilterOutput()
+{
+	sl::StringHashTableIterator<ModuleItem*> it = m_itemMap.getHead();
+	for (; it; it++)
+		it->m_value->generateDoxygenFilterOutput();
 }
 
 //..............................................................................

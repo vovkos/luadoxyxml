@@ -49,9 +49,9 @@ enum ModuleItemKind
 {
 	ModuleItemKind_Undefined,
 	ModuleItemKind_Variable,
-	ModuleItemKind_Function,
-	ModuleItemKind_Table,
 	ModuleItemKind_Field,
+	ModuleItemKind_FunctionParam,
+	ModuleItemKind_Function,
 };
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -83,8 +83,12 @@ struct ModuleItem: sl::ListLink
 		sl::String* indexXml
 		) = 0;
 
+	virtual
+	void
+	generateDoxygenFilterOutput(const sl::StringRef& indent = "") = 0;
+
 	sl::String
-	getDoxyLocationString()
+	getLocationString()
 	{
 		return sl::formatString("<location file='%s' line='%d' col='%d'/>\n",
 			m_fileName.sz(),
@@ -92,6 +96,71 @@ struct ModuleItem: sl::ListLink
 			m_pos.m_col + 1
 			);
 	}
+
+	void
+	printDoxygenFilterComment(const sl::StringRef& indent = "");
+};
+
+//..............................................................................
+
+struct Variable: ModuleItem
+{
+	sl::StringRef m_name;
+	Value m_initializer;
+	size_t m_index; // for table fields and arguments
+
+	Variable()
+	{
+		m_itemKind = ModuleItemKind_Variable;
+		m_index = 0;
+	}
+
+	bool
+	isLuaStruct();
+
+	virtual
+	sl::String
+	createDoxyRefId();
+
+	virtual
+	bool
+	generateDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
+
+	virtual
+	void
+	generateDoxygenFilterOutput(const sl::StringRef& indent);
+
+protected:
+	bool
+	generateVariableDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
+
+	bool
+	generateLuaStructDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
+
+	void
+	generateVariableDoxygenFilterOutput(const sl::StringRef& indent);
+
+	void
+	generateLuaStructDoxygenFilterOutput(const sl::StringRef& indent);
+};
+
+//..............................................................................
+
+struct Table: sl::ListLink
+{
+	sl::Array<Variable*> m_fieldArray;
 };
 
 //..............................................................................
@@ -133,34 +202,14 @@ struct FunctionName
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
-struct FunctionArgList
+struct FunctionParamArray
 {
-	sl::BoxList<sl::StringRef> m_list;
+	sl::Array<Variable*> m_array;
 	bool m_isVarArg;
 
-	FunctionArgList()
+	FunctionParamArray()
 	{
 		m_isVarArg = false;
-	}
-
-	FunctionArgList(const FunctionArgList& src)
-	{
-		operator = (src);
-	}
-
-	FunctionArgList(FunctionArgList&& src)
-	{
-		operator = (src);
-	}
-
-	FunctionArgList&
-	operator = (const FunctionArgList& src);
-
-	FunctionArgList&
-	operator = (FunctionArgList&& src)
-	{
-		sl::takeOver(this, &src);
-		return *this;
 	}
 };
 
@@ -169,7 +218,7 @@ struct FunctionArgList
 struct Function: ModuleItem
 {
 	FunctionName m_name;
-	FunctionArgList m_argList;
+	FunctionParamArray m_paramArray;
 
 	Function()
 	{
@@ -187,80 +236,10 @@ struct Function: ModuleItem
 		sl::String* itemXml,
 		sl::String* indexXml
 		);
-};
-
-//..............................................................................
-
-struct Variable: ModuleItem
-{
-	sl::StringRef m_name;
-	Value m_initializer;
-
-	Variable()
-	{
-		m_itemKind = ModuleItemKind_Variable;
-	}
-
-	bool
-	isTableType();
 
 	virtual
-	sl::String
-	createDoxyRefId();
-
-	virtual
-	bool
-	generateDocumentation(
-		const sl::StringRef& outputDir,
-		sl::String* itemXml,
-		sl::String* indexXml
-		);
-
-protected:
-	bool
-	generateVariableDocumentation(
-		const sl::StringRef& outputDir,
-		sl::String* itemXml,
-		sl::String* indexXml
-		);
-
-	bool
-	generateTableTypeDocumentation(
-		const sl::StringRef& outputDir,
-		sl::String* itemXml,
-		sl::String* indexXml
-		);
-};
-
-//..............................................................................
-
-struct Field: Variable
-{
-	size_t m_index;
-
-	Field()
-	{
-		m_itemKind = ModuleItemKind_Field;
-		m_index = 0;
-	}
-
-	virtual
-	sl::String
-	createDoxyRefId();
-};
-
-//..............................................................................
-
-struct Table: sl::ListLink
-{
-	sl::Array<Field*> m_fieldArray;
-
-	bool
-	generateDocumentation(
-		const sl::StringRef& outputDir,
-		sl::String* itemXml,
-		sl::String* indexXml
-		);
+	void
+	generateDoxygenFilterOutput(const sl::StringRef& indent);
 };
 
 //..............................................................................
@@ -300,6 +279,9 @@ public:
 		sl::String* itemXml,
 		sl::String* indexXml
 		);
+
+	void
+	generateDoxygenFilterOutput();
 };
 
 //..............................................................................

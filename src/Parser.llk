@@ -50,23 +50,44 @@ Members2
 	Table*
 	createTable();
 
-	Field*
-	declareField(
+	Variable*
+	declareVariableEx(
+		ModuleItemKind itemKind,
 		const Token::Pos& pos,
 		const sl::StringRef& name
 		);
 
 	Variable*
+	declareField(
+		const Token::Pos& pos,
+		const sl::StringRef& name
+		)
+	{
+		return declareVariableEx(ModuleItemKind_Field, pos, name);
+	}
+
+	Variable*
 	declareVariable(
 		const Token::Pos& pos,
 		const sl::StringRef& name
-		);
+		)
+	{
+		return declareVariableEx(ModuleItemKind_Variable, pos, name);
+	}
+
+	Variable*
+	declareFunctionParam(
+		const Token::Pos& pos,
+		const sl::StringRef& name
+		)
+	{
+		return declareVariableEx(ModuleItemKind_FunctionParam, pos, name);
+	}
 
 	Function*
 	declareFunction(
 		const Token::Pos& pos,
-		FunctionName* name,
-		FunctionArgList* argList
+		FunctionName* name
 		);
 
 	void
@@ -84,6 +105,10 @@ block
 	;
 
 statement
+	enter
+	{
+		m_lastDeclaredItem = NULL;
+	}
 	:	expression_stmt
 	|	label
 	|	TokenKind_Goto TokenKind_Identifier
@@ -126,15 +151,7 @@ statement
 			{
 				m_scopeLevel--;
 			}
-	|	TokenKind_Function
-			{
-				m_scopeLevel++;
-			}
-		function_name function_body
-			{
-				if (!--m_scopeLevel)
-					return declareFunction($1.m_pos, &$2.m_name, &$3.m_argList);
-			}
+	|	function_decl
 	|	TokenKind_Local
 			{
 				m_scopeLevel++;
@@ -145,6 +162,25 @@ statement
 			}
 	|	TokenKind_Local name_list ('=' expression_list)?
 	|	';'
+	;
+
+function_decl
+	local
+	{
+		Function* $function;
+	}
+	:	TokenKind_Function function_name
+			{
+				$function = !m_scopeLevel ? declareFunction($1.m_pos, &$2.m_name) : NULL;
+				m_scopeLevel++;
+			}
+		function_body $b
+			{
+				--m_scopeLevel;
+				if ($function)
+					sl::takeOver(&$function->m_paramArray, &$b.m_paramArray);
+			}
+
 	;
 
 label
@@ -171,6 +207,30 @@ function_name
 				$.m_name.m_isMethod = true;
 			}
 		)?
+	;
+
+class
+{
+	FunctionParamArray m_paramArray;
+}
+function_body
+	:	'(' parameter_list<&$.m_paramArray>? ')' block TokenKind_End
+	;
+
+parameter_list<FunctionParamArray* $argArray>
+	:	parameter<$argArray> (',' parameter<$argArray>)*
+	;
+
+parameter<FunctionParamArray* $argArray>
+	:	TokenKind_Identifier
+			{
+				Variable* arg = declareFunctionParam($1.m_pos, $1.m_data.m_string);
+				$argArray->m_array.append(arg);
+			}
+	|	TokenKind_Ellipsis
+			{
+				$argArray->m_isVarArg = true;
+			}
 	;
 
 for_iterator
@@ -331,29 +391,6 @@ arguments
 
 class
 {
-	FunctionArgList m_argList;
-}
-function_body
-	:	'(' parameter_list<&$.m_argList>? ')' block TokenKind_End
-	;
-
-parameter_list<FunctionArgList* $argList>
-	:	parameter<$argList> (',' parameter<$argList>)*
-	;
-
-parameter<FunctionArgList* $argList>
-	:	TokenKind_Identifier
-			{
-				$argList->m_list.insertTail($1.m_data.m_string);
-			}
-	|	TokenKind_Ellipsis
-			{
-				$argList->m_isVarArg = true;
-			}
-	;
-
-class
-{
 	Token::Pos m_pos;
 	Value m_value;
 }
@@ -387,7 +424,7 @@ field_list<Table* $table>
 
 class
 {
-	Field* m_field;
+	Variable* m_field;
 }
 field
 	enter

@@ -30,41 +30,42 @@ Parser::createTable()
 	return table;
 }
 
-Field*
-Parser::declareField(
-	const Token::Pos& pos,
-	const sl::StringRef& name
-	)
-{
-	Field* field = AXL_MEM_NEW(Field);
-	field->m_name = name;
-	finalizeDeclaration(pos, field);
-	return field;
-}
-
 Variable*
-Parser::declareVariable(
+Parser::declareVariableEx(
+	ModuleItemKind itemKind,
 	const Token::Pos& pos,
 	const sl::StringRef& name
 	)
 {
+	if (itemKind == ModuleItemKind_Variable && m_module->m_itemMap.find(name)) // re-declaration
+		return NULL;
+
 	Variable* variable = AXL_MEM_NEW(Variable);
+	variable->m_itemKind = itemKind;
 	variable->m_name = name;
-	finalizeDeclaration(pos, variable, name);
+
+	finalizeDeclaration(
+		pos,
+		variable,
+		itemKind == ModuleItemKind_Variable ? name : NULL
+		);
+
 	return variable;
 }
 
 Function*
 Parser::declareFunction(
 	const Token::Pos& pos,
-	FunctionName* name,
-	FunctionArgList* argList
+	FunctionName* name
 	)
 {
+	sl::String fullName = name->getFullName();
+	if (m_module->m_itemMap.find(fullName)) // re-declaration
+		return NULL;
+
 	Function* function = AXL_MEM_NEW(Function);
 	sl::takeOver(&function->m_name, name);
-	sl::takeOver(&function->m_argList, argList);
-	finalizeDeclaration(pos, function, function->m_name.getFullName());
+	finalizeDeclaration(pos, function, fullName);
 	return function;
 }
 

@@ -85,8 +85,8 @@ DoxyHost::processCustomCommand(
 	CustomCommand command = CustomCommandNameMap::findValue(commandName, CustomCommand_Undefined);
 	switch (command)
 	{
-	case CustomCommand_TableType:
-		block->m_internalDescription += ":tabletype:";
+	case CustomCommand_LuaStruct:
+		block->m_internalDescription += ":luastruct:";
 		break;
 	}
 }

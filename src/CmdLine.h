@@ -15,8 +15,9 @@
 
 enum CmdLineFlag
 {
-	CmdLineFlag_Help    = 0x0001,
-	CmdLineFlag_Version = 0x0002,
+	CmdLineFlag_Help          = 0x0001,
+	CmdLineFlag_Version       = 0x0002,
+	CmdLineFlag_DoxygenFilter = 0x0004,
 };
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -45,6 +46,7 @@ enum CmdLineSwitchKind
 	CmdLineSwitchKind_Help,
 	CmdLineSwitchKind_Version,
 	CmdLineSwitchKind_OutputFileName,
+	CmdLineSwitchKind_DoxygenFilter,
 };
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -65,6 +67,12 @@ AXL_SL_BEGIN_CMD_LINE_SWITCH_TABLE(CmdLineSwitchTable, CmdLineSwitchKind)
 	AXL_SL_CMD_LINE_SWITCH_2(
 		CmdLineSwitchKind_OutputFileName,
 		"o", "output", "<file>",
+		"Specify master (index) output file"
+		)
+
+	AXL_SL_CMD_LINE_SWITCH(
+		CmdLineSwitchKind_DoxygenFilter,
+		"doxygen-filter", NULL,
 		"Specify master (index) output file"
 		)
 AXL_SL_END_CMD_LINE_SWITCH_TABLE()
