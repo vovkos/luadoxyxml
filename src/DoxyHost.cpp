@@ -41,7 +41,9 @@ DoxyHost::setItemBlock(
 {
 	ModuleItem* item = (ModuleItem*)item0;
 	item->m_doxyBlock = block;
-	block->m_item = item;
+
+	if (block)
+		block->m_item = item;
 }
 
 sl::String
