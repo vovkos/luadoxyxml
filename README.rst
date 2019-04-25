@@ -21,7 +21,7 @@ Abstract
 
 LuaDoxyXML is a tool for extracting `Doxygen <http://www.stack.nl/~dimitri/doxygen/>`_-style comments from **Lua** source files and outputting those as **Doxygen XML**.
 
-It is indended to be used at the first stage (front-end) in the `Doxyrest pipeline` <https://github.com/vovkos/doxyrest>`_ for generating beautiful `Sphinx <http://www.sphinx-doc.org>`_-based documentation for Lua APIs and libraries.
+It is indended to be used at the first stage (front-end) in the `Doxyrest pipeline <https://github.com/vovkos/doxyrest>`_ for generating beautiful `Sphinx <http://www.sphinx-doc.org>`_-based documentation for Lua APIs and libraries.
 
 Quick HOWTO
 -----------
@@ -45,13 +45,11 @@ Please note, that in *direct mode* only a small subset of Doxygen `special comma
 
 * ``\\var``
 * ``\\fn``
-* ``\\defgroup``
-* ``\\addtogroup``
+* ``\\defgroup``/``\\addtogroup``
 * ``\\ingroup``
 * ``\\title``
 * ``\\brief``
-* ``\\see``
-* ``\\sa``
+* ``\\see``/``\\sa``
 
 If you use **reStructuredText** inside doxy-comments, you don't really need any of the Doxygen formatting commands -- in this case the *direct mode* is the right choice. However, if you *do need* advanced Doxygen commands, then you can use Doxygen as the main processor and ``luadoxyxml`` as a *filter* as described in the next session.
 
