@@ -13,7 +13,7 @@ LuaDoxyXML
 ==========
 .. image:: https://travis-ci.org/vovkos/luadoxxml.svg?branch=master
 	:target: https://travis-ci.org/vovkos/luadoxxml
-.. image:: https://ci.appveyor.com/api/projects/status/n41qiwei26t7o0pq?svg=true
+.. image:: https://ci.appveyor.com/api/projects/status/oo9ql7v3gbvkxh3l?svg=true
 	:target: https://ci.appveyor.com/project/vovkos/luadoxxml
 
 Abstract
@@ -109,8 +109,8 @@ Once you have generated a Doxygen XML database, you can use it to build beautifu
 		<doxyrest-rst-dir> \
 		<final-html-dir>
 
-Lua tables
-~~~~~~~~~~
+Lua tables types
+~~~~~~~~~~~~~~~~
 
 Lua uses dynamic duck-typing, so there are no type definitions. However, most Lua programs usually expect table variables and/or arguments to contain certain fields, i.e. belong to a some *duck-type*.
 
