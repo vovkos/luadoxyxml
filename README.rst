@@ -11,10 +11,10 @@
 
 LuaDoxyXML
 ==========
-.. image:: https://travis-ci.org/vovkos/luadoxxml.svg?branch=master
-	:target: https://travis-ci.org/vovkos/luadoxxml
+.. image:: https://travis-ci.org/vovkos/luadoxyxml.svg?branch=master
+	:target: https://travis-ci.org/vovkos/luadoxyxml
 .. image:: https://ci.appveyor.com/api/projects/status/oo9ql7v3gbvkxh3l?svg=true
-	:target: https://ci.appveyor.com/project/vovkos/luadoxxml
+	:target: https://ci.appveyor.com/project/vovkos/luadoxyxml
 
 Abstract
 --------
@@ -43,13 +43,13 @@ This will generate an XML database out of doxy-comments in ``main.lua`` and ``ut
 
 Please note, that in *direct mode* only a small subset of Doxygen `special commands <http://www.doxygen.nl/manual/commands.html>`__ is supported:
 
-* ``\\var``
-* ``\\fn``
-* ``\\defgroup``/``\\addtogroup``
-* ``\\ingroup``
-* ``\\title``
-* ``\\brief``
-* ``\\see``/``\\sa``
+* ``\var``
+* ``\fn``
+* ``\defgroup`` = ``\addtogroup``
+* ``\ingroup``
+* ``\title``
+* ``\brief``
+* ``\see`` = ``\sa``
 
 If you use **reStructuredText** inside doxy-comments, you don't really need any of the Doxygen formatting commands -- in this case the *direct mode* is the right choice. However, if you *do need* advanced Doxygen commands, then you can use Doxygen as the main processor and ``luadoxyxml`` as a *filter* as described in the next session.
 

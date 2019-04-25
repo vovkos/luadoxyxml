@@ -181,20 +181,24 @@ struct FunctionName
 		operator = (src);
 	}
 
+#if (_AXL_CPP_HAS_RVALUE_REF)
 	FunctionName(FunctionName&& src)
 	{
 		operator = (src);
 	}
+#endif
 
 	FunctionName&
 	operator = (const FunctionName& src);
 
+#if (_AXL_CPP_HAS_RVALUE_REF)
 	FunctionName&
 	operator = (FunctionName&& src)
 	{
 		sl::takeOver(this, &src);
 		return *this;
 	}
+#endif
 
 	sl::StringRef
 	getFullName() const;
