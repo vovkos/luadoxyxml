@@ -25,7 +25,7 @@ cmake .. -DTARGET_CPU=$TARGET_CPU -DCMAKE_BUILD_TYPE=$BUILD_CONFIGURATION
 make
 popd
 
-echo "set (AXL_CMAKE_DIR $THIS_DIR/graco/cmake $THIS_DIR/graco/build/cmake)" >> paths.cmake
+echo "set (GRACO_CMAKE_DIR $THIS_DIR/graco/cmake $THIS_DIR/graco/build/cmake)" >> paths.cmake
 
 mkdir build
 pushd build

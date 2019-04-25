@@ -26,7 +26,7 @@ cmake .. %CMAKE_CONFIGURE_FLAGS%
 cmake --build . %CMAKE_BUILD_FLAGS%
 
 cd %THIS_DIR%
-echo set (AXL_CMAKE_DIR %THIS_DIR_CMAKE%/graco/cmake %THIS_DIR_CMAKE%/graco/build/cmake) >> paths.cmake
+echo set (GRACO_CMAKE_DIR %THIS_DIR_CMAKE%/graco/cmake %THIS_DIR_CMAKE%/graco/build/cmake) >> paths.cmake
 
 mkdir build
 cd build
