@@ -35,6 +35,7 @@ else
 
 	echo "set (LUA_LIB_DIR /usr/lib/i386-linux-gnu)" >> paths.cmake
 	echo "set (OPENSSL_INC_DIR DISABLED)" >> paths.cmake
+	echo "set (EXPAT_INC_DIR DISABLED)" >> paths.cmake
 fi
 
 exit 0 # ignore any errors
