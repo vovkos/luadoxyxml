@@ -97,12 +97,14 @@ enum CustomCommand
 {
 	CustomCommand_Undefined,
 	CustomCommand_LuaStruct,
+	CustomCommand_LuaEnum,
 };
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
 
 AXL_SL_BEGIN_STRING_HASH_TABLE(CustomCommandNameMap, CustomCommand)
 	AXL_SL_HASH_TABLE_ENTRY("luastruct", CustomCommand_LuaStruct)
+	AXL_SL_HASH_TABLE_ENTRY("luaenum",   CustomCommand_LuaEnum)
 AXL_SL_END_STRING_HASH_TABLE()
 
 //..............................................................................

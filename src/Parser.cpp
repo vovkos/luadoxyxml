@@ -53,6 +53,28 @@ Parser::declareVariableEx(
 	return variable;
 }
 
+Variable*
+Parser::declareIndexedField(
+	const Token::Pos& pos,
+	const Value& index
+	)
+{
+	Variable* field = declareVariableEx(ModuleItemKind_Field, pos, NULL);
+	field->m_index = index;
+	return field;
+}
+
+Variable*
+Parser::declareUnnamedField(
+	const Token::Pos& pos,
+	const Value& initializer
+	)
+{
+	Variable* field = declareVariableEx(ModuleItemKind_Field, pos, NULL);
+	field->m_initializer = initializer;
+	return field;
+}
+
 Function*
 Parser::declareFunction(
 	const Token::Pos& pos,

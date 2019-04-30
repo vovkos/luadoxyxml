@@ -17,9 +17,45 @@
 void
 Value::clear()
 {
-	m_valueKind = ValueKind_Undefined;
+	m_valueKind = ValueKind_Empty;
 	m_table = NULL;
 	m_source.clear();
+}
+
+void
+Value::setFirstToken(
+	const Token::Pos& pos,
+	ValueKind valueKind
+	)
+{
+	ASSERT(m_valueKind == ValueKind_Empty);
+
+	m_firstTokenPos = pos;
+	m_lastTokenPos = pos;
+	m_valueKind = valueKind;
+	m_source = sl::StringRef(pos.m_p, pos.m_length);
+}
+
+void
+Value::appendSource(
+	const Token::Pos& pos,
+	ValueKind valueKind
+	)
+{
+	ASSERT(m_valueKind != ValueKind_Empty);
+
+	m_lastTokenPos = pos;
+	m_valueKind = valueKind;
+
+	if (valueKind != ValueKind_Table)
+		m_table = NULL;
+	else
+		ASSERT(m_table);
+
+	ASSERT(!m_source.isEmpty());
+	const char* p = m_source.cp();
+	const char* end = pos.m_p + pos.m_length;
+	m_source = sl::StringRef(p, end - p);
 }
 
 //..............................................................................
@@ -56,7 +92,10 @@ Variable::createDoxyRefId()
 		break;
 
 	default:
-		refId = isLuaStruct() ? "struct_" : "variable_";
+		refId =
+			isLuaStruct() ? "struct_" :
+			isLuaEnum() ? "enum_" :
+			"variable_";
 	}
 
 	refId += m_name;
@@ -76,14 +115,25 @@ Variable::isLuaStruct()
 }
 
 bool
+Variable::isLuaEnum()
+{
+	if (!m_initializer.m_table)
+		return false;
+
+	m_module->m_doxyModule.getHost()->getItemBlock(this);
+	return m_doxyBlock->getInternalDescription().find(":luaenum:") != -1;
+}
+
+bool
 Variable::generateDocumentation(
 	const sl::StringRef& outputDir,
 	sl::String* itemXml,
 	sl::String* indexXml
 	)
 {
-	return isLuaStruct()?
-		generateLuaStructDocumentation(outputDir, itemXml, indexXml) :
+	return
+		isLuaStruct() ? generateLuaStructDocumentation(outputDir, itemXml, indexXml) :
+		isLuaEnum() ? generateLuaEnumDocumentation(outputDir, itemXml, indexXml) :
 		generateVariableDocumentation(outputDir, itemXml, indexXml);
 }
 
@@ -94,6 +144,8 @@ Variable::generateDoxygenFilterOutput(const sl::StringRef& indent)
 
 	if (isLuaStruct())
 		generateLuaStructDoxygenFilterOutput(indent);
+	else if (isLuaEnum())
+		generateLuaEnumDoxygenFilterOutput(indent);
 	else
 		generateVariableDoxygenFilterOutput(indent);
 }
@@ -150,11 +202,11 @@ Variable::generateLuaStructDocumentation(
 	for (size_t i = 0; i < count; i++)
 	{
 		Variable* field = m_initializer.m_table->m_fieldArray[i];
-		if (!field->m_name.isEmpty())
-		{
-			field->generateDocumentation(outputDir, &fieldXml, indexXml);
-			itemXml->append(fieldXml);
-		}
+		if (field->m_name.isEmpty())
+			continue;
+
+		field->generateDocumentation(outputDir, &fieldXml, indexXml);
+		itemXml->append(fieldXml);
 	}
 
 	itemXml->append("</sectiondef>\n");
@@ -171,6 +223,52 @@ Variable::generateLuaStructDocumentation(
 	itemXml->append(m_doxyBlock->getDescriptionString());
 	itemXml->append(getLocationString());
 	itemXml->append("</compounddef>\n");
+
+	return true;
+}
+
+bool
+Variable::generateLuaEnumDocumentation(
+	const sl::StringRef& outputDir,
+	sl::String* itemXml,
+	sl::String* indexXml
+	)
+{
+	ASSERT(m_initializer.m_table && m_doxyBlock);
+
+	itemXml->format(
+		"<memberdef kind='enum' id='%s' language='Lua'>\n"
+		"<name>%s</name>\n",
+		m_doxyBlock->getRefId().sz(),
+		m_name.sz()
+		);
+
+	sl::String fieldXml;
+	size_t count = m_initializer.m_table->m_fieldArray.getCount();
+	for (size_t i = 0; i < count; i++)
+	{
+		Variable* field = m_initializer.m_table->m_fieldArray[i];
+		if (field->m_initializer.isEmpty())
+			continue;
+
+		dox::Block* fieldDoxyBlock = m_module->m_doxyModule.getHost()->getItemBlock(field);
+
+		itemXml->appendFormat("<enumvalue id='%s'>\n", fieldDoxyBlock->getRefId ().sz());
+		itemXml->appendFormat("<name>%s_%d</name>\n", m_name.sz(), i);
+		itemXml->appendFormat("<initializer>= %s</initializer>\n", field->m_initializer.m_source.sz());
+		itemXml->append(fieldDoxyBlock->getDescriptionString());
+		itemXml->append(field->getLocationString());
+		itemXml->append("</enumvalue>\n");
+	}
+
+	sl::String footnoteXml = m_doxyBlock->getFootnoteString();
+	if (!footnoteXml.isEmpty())
+		itemXml->append(footnoteXml);
+
+	itemXml->append(m_doxyBlock->getImportString());
+	itemXml->append(m_doxyBlock->getDescriptionString());
+	itemXml->append(getLocationString());
+	itemXml->append("</memberdef>\n");
 
 	return true;
 }
@@ -195,6 +293,25 @@ Variable::generateLuaStructDoxygenFilterOutput(const sl::StringRef& indent)
 		Variable* field = m_initializer.m_table->m_fieldArray[i];
 		if (!field->m_name.isEmpty())
 			field->generateDoxygenFilterOutput("\t");
+	}
+
+	printf("};\n\n");
+}
+
+void
+Variable::generateLuaEnumDoxygenFilterOutput(const sl::StringRef& indent)
+{
+	printf("enum %s\n{\n", m_name.sz());
+
+	size_t count = m_initializer.m_table->m_fieldArray.getCount();
+	for (size_t i = 0; i < count; i++)
+	{
+		Variable* field = m_initializer.m_table->m_fieldArray[i];
+		if (field->m_initializer.isEmpty())
+			continue;
+
+		field->printDoxygenFilterComment("\t");
+		printf("\t%s_%d = %s,\n", m_name.sz(), i, field->m_initializer.m_source.sz());
 	}
 
 	printf("};\n\n");

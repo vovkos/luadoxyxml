@@ -20,7 +20,9 @@ struct Table;
 
 enum ValueKind
 {
-	ValueKind_Undefined,
+	ValueKind_Empty,
+	ValueKind_Expression,
+	ValueKind_Constant,
 	ValueKind_Variable,
 	ValueKind_Table,
 };
@@ -29,18 +31,38 @@ enum ValueKind
 
 struct Value
 {
+	Token::Pos m_firstTokenPos;
+	Token::Pos m_lastTokenPos;
 	ValueKind m_valueKind;
 	sl::StringRef m_source;
 	Table* m_table;
 
 	Value()
 	{
-		m_valueKind = ValueKind_Undefined;
+		m_valueKind = ValueKind_Empty;
 		m_table = NULL;
+	}
+
+	bool
+	isEmpty() const
+	{
+		return m_valueKind == ValueKind_Empty;
 	}
 
 	void
 	clear();
+
+	void
+	setFirstToken(
+		const Token::Pos& pos,
+		ValueKind valueKind = ValueKind_Expression
+		);
+
+	void
+	appendSource(
+		const Token::Pos& pos,
+		ValueKind valueKind = ValueKind_Expression
+		);
 };
 
 //..............................................................................
@@ -106,17 +128,19 @@ struct ModuleItem: sl::ListLink
 struct Variable: ModuleItem
 {
 	sl::StringRef m_name;
+	Value m_index;
 	Value m_initializer;
-	size_t m_index; // for table fields and arguments
 
 	Variable()
 	{
 		m_itemKind = ModuleItemKind_Variable;
-		m_index = 0;
 	}
 
 	bool
 	isLuaStruct();
+
+	bool
+	isLuaEnum();
 
 	virtual
 	sl::String
@@ -149,11 +173,21 @@ protected:
 		sl::String* indexXml
 		);
 
+	bool
+	generateLuaEnumDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* itemXml,
+		sl::String* indexXml
+		);
+
 	void
 	generateVariableDoxygenFilterOutput(const sl::StringRef& indent);
 
 	void
 	generateLuaStructDoxygenFilterOutput(const sl::StringRef& indent);
+
+	void
+	generateLuaEnumDoxygenFilterOutput(const sl::StringRef& indent);
 };
 
 //..............................................................................

@@ -58,13 +58,25 @@ Members2
 		);
 
 	Variable*
-	declareField(
+	declareNamedField(
 		const Token::Pos& pos,
 		const sl::StringRef& name
 		)
 	{
 		return declareVariableEx(ModuleItemKind_Field, pos, name);
 	}
+
+	Variable*
+	declareIndexedField(
+		const Token::Pos& pos,
+		const Value& index
+		);
+
+	Variable*
+	declareUnnamedField(
+		const Token::Pos& pos,
+		const Value& initializer
+		);
 
 	Variable*
 	declareVariable(
@@ -212,9 +224,13 @@ function_name
 class
 {
 	FunctionParamArray m_paramArray;
+	Token::Pos m_lastTokenPos;
 }
 function_body
-	:	'(' parameter_list<&$.m_paramArray>? ')' block TokenKind_End
+	:	'(' parameter_list<&$.m_paramArray>? ')' block TokenKind_End $e
+			{
+				$.m_lastTokenPos = $e.m_pos;
+			}
 	;
 
 parameter_list<FunctionParamArray* $argArray>
@@ -266,7 +282,7 @@ expression_stmt
 	:	postfix_expr
 			{
 				if (!m_scopeLevel && $1.m_value.m_valueKind == ValueKind_Variable)
-					$variable = declareVariable($1.m_pos, $1.m_value.m_source);
+					$variable = declareVariable($1.m_value.m_firstTokenPos, $1.m_value.m_source);
 			}
 		(',' postfix_expr
 			{
@@ -284,127 +300,169 @@ expression_stmt
 
 class
 {
-	Token::Pos m_pos;
 	Value m_value;
 }
 expression_list
 	:	expression
 			{
-				$.m_pos = $1.m_pos;
 				$.m_value = $1.m_value;
 			}
 		(',' expression
 			{
-				$.m_value.clear();
+				$.m_value.appendSource($3.m_value.m_lastTokenPos);
 			}
 		)*
 	;
 
 class
 {
-	Token::Pos m_pos;
 	Value m_value;
 }
 expression
 	:	unary_expr
 			{
-				$.m_pos = $1.m_pos;
 				$.m_value = $1.m_value;
 			}
 		(bin_op expression
 			{
-				$.m_value.clear();
+				$.m_value.appendSource($3.m_value.m_lastTokenPos);
 			}
 		)*
 	;
 
 class
 {
-	Token::Pos m_pos;
 	Value m_value;
 }
 unary_expr
 	:	postfix_expr
 			{
-				$.m_pos = $1.m_pos;
 				$.m_value = $1.m_value;
 			}
 	|	un_op unary_expr
+			{
+				$.m_value.setFirstToken($1.m_pos);
+				$.m_value.appendSource($2.m_value.m_lastTokenPos);
+			}
 	;
 
 class
 {
-	Token::Pos m_pos;
 	Value m_value;
 }
 postfix_expr
 	: 	primary_expr
 			{
-				$.m_pos = $1.m_pos;
 				$.m_value = $1.m_value;
 			}
 		(postfix_op
 			{
-				$.m_value.clear();
+				$.m_value.appendSource($2.m_lastTokenPos);
 			}
 		)*
 	;
 
+class
+{
+	Token::Pos m_lastTokenPos;
+}
 postfix_op
 	:	'[' expression ']'
+			{
+				$.m_lastTokenPos = $3.m_pos;
+			}
 	|	'.' TokenKind_Identifier
+			{
+				$.m_lastTokenPos = $2.m_pos;
+			}
 	|	(':' TokenKind_Identifier)? arguments
+			{
+				$.m_lastTokenPos = $3.m_lastTokenPos;
+			}
 	;
 
 class
 {
-	Token::Pos m_pos;
 	Value m_value;
 }
 primary_expr
 	:	TokenKind_Nil
+			{
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Constant);
+			}
 	|	TokenKind_False
+			{
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Constant);
+			}
 	|	TokenKind_True
+			{
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Constant);
+			}
 	|	TokenKind_Number
+			{
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Constant);
+			}
 	|	TokenKind_String
+			{
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Constant);
+			}
 	|	TokenKind_Identifier
 			{
-				$.m_pos = $1.m_pos;
-				$.m_value.m_valueKind = ValueKind_Variable;
-				$.m_value.m_source = $1.m_data.m_string;
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Variable);
 			}
 	|	TokenKind_Ellipsis
+			{
+				$.m_value.setFirstToken($1.m_pos);
+			}
 	|	TokenKind_Function function_body
+			{
+				$.m_value.setFirstToken($1.m_pos);
+				$.m_value.appendSource($2.m_lastTokenPos);
+			}
 	|	table_constructor
 			{
-				$.m_pos = $1.m_pos;
 				$.m_value = $1.m_value;
 			}
 	|	'(' expression ')'
-	;
-
-arguments
-	: 	'(' expression_list? ')'
-	|	table_constructor
-	|	TokenKind_String
+			{
+				$.m_value.setFirstToken($1.m_pos);
+				$.m_value.appendSource($3.m_pos);
+			}
 	;
 
 class
 {
-	Token::Pos m_pos;
+	Token::Pos m_lastTokenPos;
+}
+arguments
+	: 	'(' expression_list? ')'
+			{
+				$.m_lastTokenPos = $3.m_pos;
+			}
+	|	table_constructor
+			{
+				$.m_lastTokenPos = $1.m_value.m_lastTokenPos;
+			}
+	|	TokenKind_String
+			{
+				$.m_lastTokenPos = $1.m_pos;
+			}
+	;
+
+class
+{
 	Value m_value;
 }
 table_constructor
 	:	'{'
 			{
-				$.m_pos = $1.m_pos;
-				$.m_value.m_valueKind = ValueKind_Table;
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Table);
 				$.m_value.m_table = createTable();
 			}
 		field_list<$.m_value.m_table>?
 		'}'
 			{
-				$.m_value.m_source = sl::StringRef($1.m_pos.m_p, $3.m_pos.m_p - $1.m_pos.m_p + 1);
+				$.m_value.appendSource($3.m_pos, ValueKind_Table);
 			}
 	;
 
@@ -413,10 +471,8 @@ field_list<Table* $table>
 			{
 				$table->m_fieldArray.append($1.m_field);
 			}
-		(field_sep
-		(field
+		(field_sep (field
 			{
-				$1.m_field->m_index = $table->m_fieldArray.getCount();
 				$table->m_fieldArray.append($3.m_field);
 			}
 		)?)*
@@ -433,19 +489,27 @@ field
 	}
 	:	'[' expression ']'
 			{
-				if ($2.m_value.m_valueKind == ValueKind_Variable)
-					$.m_field = declareField($2.m_pos, $2.m_value.m_source);
+				$.m_field = $2.m_value.m_valueKind == ValueKind_Variable ?
+					declareNamedField($1.m_pos, $2.m_value.m_source) :
+					declareIndexedField($1.m_pos, $2.m_value);
 			}
-		'=' expression
+		'=' expression $i
+			{
+				$.m_field->m_initializer = $i.m_value;
+			}
 	|	TokenKind_Identifier
 			{
-				$.m_field = declareField($1.m_pos, $1.m_data.m_string);
+				$.m_field = declareNamedField($1.m_pos, $1.m_data.m_string);
 			}
-		'=' expression
+		'=' expression $i
+			{
+				$.m_field->m_initializer = $i.m_value;
+			}
 	|	expression
 			{
-				if ($1.m_value.m_valueKind == ValueKind_Variable)
-					$.m_field = declareField($1.m_pos, $1.m_value.m_source);
+				$.m_field = $1.m_value.m_valueKind == ValueKind_Variable ?
+					declareNamedField($1.m_value.m_firstTokenPos, $1.m_value.m_source) :
+					declareUnnamedField($1.m_value.m_firstTokenPos, $1.m_value);
 			}
 	;
 
@@ -478,9 +542,25 @@ bin_op
 	|	'^'
 	;
 
+class
+{
+	Token::Pos m_pos;
+}
 un_op
 	:	'~'
+			{
+				$.m_pos = $1.m_pos;
+			}
 	|	'-'
+			{
+				$.m_pos = $1.m_pos;
+			}
 	|	'#'
+			{
+				$.m_pos = $1.m_pos;
+			}
 	|	TokenKind_Not
+			{
+				$.m_pos = $1.m_pos;
+			}
 	;
