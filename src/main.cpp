@@ -45,19 +45,95 @@ printUsage()
 }
 
 bool
-run(CmdLine* cmdLine)
+parseFile(
+	const sl::StringRef& fileName,
+	Module* module
+	)
 {
-	bool result;
-
 	io::SimpleMappedFile file;
-	DoxyHost doxyHost;
-	Module module(&doxyHost);
+
+	bool result = file.open(fileName, io::FileFlag_ReadOnly);
+	if (!result)
+		return false;
 
 	Lexer lexer;
 	lexer.m_channelMask = TokenChannelMask_All; // include doxygen comments
 
-	Parser parser(&module);
-	doxyHost.setup(&module, &parser);
+	Parser parser(module);
+	((DoxyHost*)module->getDoxyHost())->setup(module, &parser);
+
+	sl::StringRef source((const char*)file.p(), file.getMappingSize());
+	lexer.create(fileName, source);
+	parser.create(fileName, SymbolKind_block);
+
+	for (;;)
+	{
+		const Token* token = lexer.getToken();
+
+		sl::StringRef comment;
+		ModuleItem* lastDeclaredItem;
+
+		switch (token->m_token)
+		{
+		case TokenKind_Error:
+			err::setFormatStringError("invalid character '\\x%02x'", (uchar_t) token->m_data.m_integer);
+			lex::pushSrcPosError(fileName, token->m_pos);
+			return false;
+
+		case TokenKind_DoxyComment_sl:
+		case TokenKind_DoxyComment_ml:
+			comment = token->m_data.m_string;
+
+			lastDeclaredItem = NULL;
+
+			if (!comment.isEmpty() && comment[0] == '<')
+			{
+				lastDeclaredItem = parser.m_lastDeclaredItem;
+				comment = comment.getSubString(1);
+			}
+
+			parser.m_doxyParser.addComment(
+				comment,
+				token->m_pos,
+				token->m_tokenKind == TokenKind_DoxyComment_sl,
+				lastDeclaredItem
+				);
+
+			break;
+
+		default:
+			result = parser.parseToken(token);
+			if (!result)
+			{
+				lex::ensureSrcPosError(fileName, token->m_pos);
+				return false;
+			}
+		}
+
+		if (token->m_token == TokenKind_Eof) // EOF token must be parsed
+			break;
+
+		lexer.nextToken();
+	}
+
+	return true;
+}
+
+bool
+run(CmdLine* cmdLine)
+{
+	static char luaSuffix[] = ".lua";
+	static char doxSuffix[] = ".dox";
+
+	enum
+	{
+		SuffixLength = lengthof(luaSuffix)
+	};
+
+	bool result;
+
+	DoxyHost doxyHost;
+	Module module(&doxyHost);
 
 	sl::ConstBoxIterator<sl::String> it = cmdLine->m_inputFileNameList.getHead();
 	for (; it; it++)
@@ -67,62 +143,48 @@ run(CmdLine* cmdLine)
 		if (!(cmdLine->m_flags & CmdLineFlag_DoxygenFilter))
 			printf("Parsing %s...\n", fileName.sz());
 
-		result = file.open(fileName, io::FileFlag_ReadOnly);
+		result = parseFile(fileName, &module);
 		if (!result)
 			return false;
+	}
 
-		sl::StringRef source((const char*)file.p(), file.getMappingSize());
-		lexer.create(fileName, source);
-		parser.create(fileName, SymbolKind_block);
+	it = cmdLine->m_sourceDirList.getHead();
+	for (; it; it++)
+	{
+		sl::String dir = *it;
+		if (dir.isEmpty())
+			continue;
 
-		for (;;)
+		if (dir[dir.getLength() - 1])
+			dir += '/';
+
+		io::FileEnumerator fileEnum;
+		bool result = fileEnum.openDir(dir);
+		if (!result)
 		{
-			const Token* token = lexer.getToken();
+			printf("warning: %s\n", err::getLastErrorDescription().sz());
+			continue;
+		}
 
-			sl::StringRef comment;
-			ModuleItem* lastDeclaredItem;
+		while (fileEnum.hasNextFile())
+		{
+			sl::String filePath = dir + fileEnum.getNextFileName();
+			if (io::isDir(filePath))
+				continue;
 
-			switch (token->m_token)
+			size_t length = filePath.getLength();
+			if (length < SuffixLength)
+				continue;
+
+			const char* suffix = filePath.sz() + length - SuffixLength;
+
+			if (memcmp(suffix, luaSuffix, SuffixLength) == 0 ||
+				memcmp(suffix, doxSuffix, SuffixLength) == 0)
 			{
-			case TokenKind_Error:
-				err::setFormatStringError("invalid character '\\x%02x'", (uchar_t) token->m_data.m_integer);
-				lex::pushSrcPosError(fileName, token->m_pos);
-				return false;
-
-			case TokenKind_DoxyComment_sl:
-			case TokenKind_DoxyComment_ml:
-				comment = token->m_data.m_string;
-
-				lastDeclaredItem = NULL;
-
-				if (!comment.isEmpty() && comment[0] == '<')
-				{
-					lastDeclaredItem = parser.m_lastDeclaredItem;
-					comment = comment.getSubString(1);
-				}
-
-				parser.m_doxyParser.addComment(
-					comment,
-					token->m_pos,
-					token->m_tokenKind == TokenKind_DoxyComment_sl,
-					lastDeclaredItem
-					);
-
-				break;
-
-			default:
-				result = parser.parseToken(token);
+				result = parseFile(filePath, &module);
 				if (!result)
-				{
-					lex::ensureSrcPosError(fileName, token->m_pos);
 					return false;
-				}
 			}
-
-			if (token->m_token == TokenKind_Eof) // EOF token must be parsed
-				break;
-
-			lexer.nextToken();
 		}
 	}
 

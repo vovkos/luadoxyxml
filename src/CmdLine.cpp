@@ -30,6 +30,10 @@ CmdLineParser::onSwitch(
 		m_cmdLine->m_flags |= CmdLineFlag_Version;
 		break;
 
+	case CmdLineSwitchKind_SourceDir:
+		m_cmdLine->m_sourceDirList.insertTail(value);
+		break;
+
 	case CmdLineSwitchKind_OutputFileName:
 		m_cmdLine->m_outputFileName = value;
 		break;
@@ -45,7 +49,8 @@ CmdLineParser::onSwitch(
 bool
 CmdLineParser::finalize()
 {
-	if (m_cmdLine->m_inputFileNameList.isEmpty())
+	if (m_cmdLine->m_inputFileNameList.isEmpty() &&
+		m_cmdLine->m_sourceDirList.isEmpty())
 	{
 		if (!m_cmdLine->m_flags)
 			m_cmdLine->m_flags = CmdLineFlag_Help;

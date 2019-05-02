@@ -26,6 +26,7 @@ struct CmdLine
 {
 	uint_t m_flags;
 	sl::String m_outputFileName;
+	sl::BoxList<sl::String> m_sourceDirList;
 	sl::BoxList<sl::String> m_inputFileNameList;
 
 	CmdLine()
@@ -45,6 +46,7 @@ enum CmdLineSwitchKind
 	CmdLineSwitchKind_Undefined = 0,
 	CmdLineSwitchKind_Help,
 	CmdLineSwitchKind_Version,
+	CmdLineSwitchKind_SourceDir,
 	CmdLineSwitchKind_OutputFileName,
 	CmdLineSwitchKind_DoxygenFilter,
 };
@@ -62,6 +64,12 @@ AXL_SL_BEGIN_CMD_LINE_SWITCH_TABLE(CmdLineSwitchTable, CmdLineSwitchKind)
 		CmdLineSwitchKind_Version,
 		"v", "version", NULL,
 		"Display version of doxyrest"
+		)
+
+	AXL_SL_CMD_LINE_SWITCH_2(
+		CmdLineSwitchKind_SourceDir,
+		"S", "source-dir", "<dir>",
+		"Add a directory with Lua source files (multiple allowed)"
 		)
 
 	AXL_SL_CMD_LINE_SWITCH_2(
