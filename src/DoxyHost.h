@@ -59,10 +59,7 @@ public:
 
 	virtual
 	sl::StringRef
-	getItemCompoundElementName(handle_t item)
-	{
-		return "innerclass";
-	};
+	getItemCompoundElementName(handle_t item);
 
 	virtual
 	handle_t

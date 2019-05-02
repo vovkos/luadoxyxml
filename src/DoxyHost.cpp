@@ -53,6 +53,14 @@ DoxyHost::createItemRefId(handle_t item0)
 	return item->createDoxyRefId();
 }
 
+sl::StringRef
+DoxyHost::getItemCompoundElementName(handle_t item0)
+{
+	ModuleItem* item = (ModuleItem*)item0;
+	bool isCompoundFile = item->m_itemKind == ModuleItemKind_Variable && ((Variable*)item)->isLuaStruct();
+	return isCompoundFile ? "innerclass" : NULL;
+};
+
 handle_t
 DoxyHost::findItem(
 	const sl::StringRef& name,
