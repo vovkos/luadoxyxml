@@ -62,9 +62,10 @@ parseFile(
 	Parser parser(module);
 	((DoxyHost*)module->getDoxyHost())->setup(module, &parser);
 
-	sl::StringRef source((const char*)file.p(), file.getMappingSize());
+	sl::String source((const char*)file.p(), file.getMappingSize());
 	lexer.create(fileName, source);
 	parser.create(fileName, SymbolKind_block);
+	module->addSource(source); // need to keep sources alive since we use StringRef's in module items
 
 	for (;;)
 	{

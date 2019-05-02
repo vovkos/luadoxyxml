@@ -290,6 +290,7 @@ protected:
 	sl::List<Table> m_tableList;
 	sl::List<ModuleItem> m_itemList;
 	sl::StringHashTable<ModuleItem*> m_itemMap;
+	sl::BoxList<sl::String> m_sourceList;
 
 public:
 	dox::Module m_doxyModule;
@@ -309,6 +310,12 @@ public:
 	findItem(const sl::StringRef& name)
 	{
 		return m_itemMap.findValue(name, NULL);
+	}
+
+	bool
+	addSource(const sl::String& source)
+	{
+		return m_sourceList.insertTail(source);
 	}
 
 	bool
