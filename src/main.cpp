@@ -219,7 +219,7 @@ main(
 	)
 #endif
 {
-	int result;
+	bool result;
 
 #if _AXL_OS_POSIX
 	setvbuf(stdout, NULL, _IOLBF, 1024);
@@ -246,8 +246,6 @@ main(
 		return -1;
 	}
 
-	result = 0;
-
 	if (cmdLine.m_flags & CmdLineFlag_Help)
 		printUsage();
 	else if (cmdLine.m_flags & CmdLineFlag_Version)
@@ -262,7 +260,7 @@ main(
 		}
 	}
 
-	return result;
+	return 0;
 }
 
 //..............................................................................
