@@ -242,7 +242,7 @@ main(
 	result = parser.parse(argc, argv);
 	if (!result)
 	{
-		printf("error parsing command line: %s\n", err::getLastErrorDescription().sz());
+		fprintf(stderr, "error parsing command line: %s\n", err::getLastErrorDescription().sz());
 		return -1;
 	}
 
@@ -257,7 +257,7 @@ main(
 		result = run(&cmdLine);
 		if (!result)
 		{
-			printf("error: %s\n", err::getLastErrorDescription().sz());
+			fprintf(stderr, "error: %s\n", err::getLastErrorDescription().sz());
 			return -1;
 		}
 	}

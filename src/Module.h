@@ -93,6 +93,9 @@ struct ModuleItem: sl::ListLink
 	{
 	}
 
+	dox::Block*
+	ensureDoxyBlock();
+
 	virtual
 	sl::String
 	createDoxyRefId() = 0;
@@ -165,6 +168,9 @@ protected:
 		sl::String* itemXml,
 		sl::String* indexXml
 		);
+
+	bool
+	generateLuaBaseTypeDocumentation(sl::String* itemXml);
 
 	bool
 	generateLuaStructDocumentation(

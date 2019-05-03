@@ -67,6 +67,14 @@ ModuleItem::ModuleItem()
 	m_doxyBlock = NULL;
 }
 
+dox::Block*
+ModuleItem::ensureDoxyBlock()
+{
+	dox::Block* block = m_module->getDoxyHost()->getItemBlock(this);
+	ASSERT(block == m_doxyBlock);
+	return block;
+}
+
 void
 ModuleItem::printDoxygenFilterComment(const sl::StringRef& indent)
 {
@@ -110,7 +118,7 @@ Variable::isLuaStruct()
 	if (!m_initializer.m_table)
 		return false;
 
-	m_module->m_doxyModule.getHost()->getItemBlock(this);
+	ensureDoxyBlock();
 	return m_doxyBlock->getInternalDescription().find(":luastruct:") != -1;
 }
 
@@ -120,7 +128,7 @@ Variable::isLuaEnum()
 	if (!m_initializer.m_table)
 		return false;
 
-	m_module->m_doxyModule.getHost()->getItemBlock(this);
+	ensureDoxyBlock();
 	return m_doxyBlock->getInternalDescription().find(":luaenum:") != -1;
 }
 
@@ -157,7 +165,7 @@ Variable::generateVariableDocumentation(
 	sl::String* indexXml
 	)
 {
-	m_module->m_doxyModule.getHost()->getItemBlock(this);
+	ensureDoxyBlock();
 
 	itemXml->format("<memberdef kind='variable' id='%s'>\n", m_doxyBlock->getRefId ().sz());
 	itemXml->appendFormat("<name>%s</name>\n", m_name.sz());
@@ -169,6 +177,47 @@ Variable::generateVariableDocumentation(
 	itemXml->append(m_doxyBlock->getDescriptionString());
 	itemXml->append(getLocationString());
 	itemXml->append("</memberdef>\n");
+
+	return true;
+}
+
+bool
+Variable::generateLuaBaseTypeDocumentation(sl::String* itemXml)
+{
+	static char token[] = ":luabasetype(";
+
+	sl::String text = m_doxyBlock->getInternalDescription();
+	size_t pos = 0;
+
+	for (;;)
+	{
+		pos = text.find(token, pos);
+		if (pos == -1)
+			break;
+
+		pos += lengthof(token);
+		size_t pos2 = text.find(')', pos);
+		if (pos2 == -1)
+			break;
+
+		sl::StringRef baseTypeName = text.getSubString(pos, pos2 - pos);
+		pos = pos2 + 1;
+
+		ModuleItem* baseType = m_module->findItem(baseTypeName);
+		if (!baseType)
+		{
+			fprintf(stderr, "\\luabasetype %s not found\n", baseTypeName.sz());
+			continue;
+		}
+
+		baseType->ensureDoxyBlock();
+
+		itemXml->appendFormat(
+			"<basecompoundref refid='%s'>%s</basecompoundref>\n",
+			baseType->m_doxyBlock->getRefId().sz(),
+			baseTypeName.sz()
+			);
+	}
 
 	return true;
 }
@@ -194,6 +243,8 @@ Variable::generateLuaStructDocumentation(
 		m_doxyBlock->getRefId().sz(),
 		m_name.sz()
 		);
+
+	generateLuaBaseTypeDocumentation(itemXml);
 
 	itemXml->append("<sectiondef>\n");
 
@@ -251,12 +302,12 @@ Variable::generateLuaEnumDocumentation(
 		if (field->m_initializer.isEmpty())
 			continue;
 
-		dox::Block* fieldDoxyBlock = m_module->m_doxyModule.getHost()->getItemBlock(field);
+		field->ensureDoxyBlock();
 
-		itemXml->appendFormat("<enumvalue id='%s'>\n", fieldDoxyBlock->getRefId ().sz());
+		itemXml->appendFormat("<enumvalue id='%s'>\n", field->m_doxyBlock->getRefId ().sz());
 		itemXml->appendFormat("<name>%s_%d</name>\n", m_name.sz(), i);
 		itemXml->appendFormat("<initializer>= %s</initializer>\n", field->m_initializer.m_source.sz());
-		itemXml->append(fieldDoxyBlock->getDescriptionString());
+		itemXml->append(field->m_doxyBlock->getDescriptionString());
 		itemXml->append(field->getLocationString());
 		itemXml->append("</enumvalue>\n");
 	}
@@ -373,9 +424,9 @@ Function::generateDocumentation(
 	sl::String* indexXml
 	)
 {
-	dox::Block* doxyBlock = m_module->m_doxyModule.getHost()->getItemBlock(this);
+	ensureDoxyBlock();
 
-	itemXml->format("<memberdef kind='function' id='%s'>\n", doxyBlock->getRefId ().sz());
+	itemXml->format("<memberdef kind='function' id='%s'>\n", m_doxyBlock->getRefId ().sz());
 	itemXml->appendFormat("<name>%s</name>\n", m_name.getFullName().sz());
 
 	size_t count = m_paramArray.m_array.getCount();
@@ -408,8 +459,8 @@ Function::generateDocumentation(
 			"</param>\n"
 			);
 
-	itemXml->append(doxyBlock->getImportString());
-	itemXml->append(doxyBlock->getDescriptionString());
+	itemXml->append(m_doxyBlock->getImportString());
+	itemXml->append(m_doxyBlock->getDescriptionString());
 	itemXml->append(getLocationString());
 	itemXml->append("</memberdef>\n");
 	return true;

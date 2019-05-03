@@ -89,6 +89,7 @@ DoxyHost::generateGlobalNamespaceDocumentation(
 void
 DoxyHost::processCustomCommand(
 	const sl::StringRef& commandName,
+	const sl::StringRef& param,
 	dox::BlockData* block
 	)
 {
@@ -101,6 +102,10 @@ DoxyHost::processCustomCommand(
 
 	case CustomCommand_LuaEnum:
 		block->m_internalDescription += ":luaenum:";
+		break;
+
+	case CustomCommand_LuaBaseType:
+		block->m_internalDescription += ":luabasetype(" + param + "):";
 		break;
 	}
 }
