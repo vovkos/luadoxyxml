@@ -63,7 +63,7 @@ AXL_SL_BEGIN_CMD_LINE_SWITCH_TABLE(CmdLineSwitchTable, CmdLineSwitchKind)
 	AXL_SL_CMD_LINE_SWITCH_2(
 		CmdLineSwitchKind_Version,
 		"v", "version", NULL,
-		"Display version of doxyrest"
+		"Display version of luadoxyxml"
 		)
 
 	AXL_SL_CMD_LINE_SWITCH_2(

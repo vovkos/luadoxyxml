@@ -266,7 +266,7 @@ struct Function: ModuleItem
 
 	Function()
 	{
-		m_itemKind = ModuleItemKind_Variable;
+		m_itemKind = ModuleItemKind_Function;
 	}
 
 	virtual
