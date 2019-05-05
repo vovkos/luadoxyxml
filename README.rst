@@ -67,6 +67,9 @@ Please note that it's not necessary to do this pre-processing manually for each 
 	# scan the project directory for Lua files
 	FILE_PATTERNS = *.lua
 
+	# luadoxyxml outputs C++-alike code
+	EXTENSION_MAPPING = lua=C++
+
 	# ... or specify files directly
 	INPUT = main.lua utils.lua
 
