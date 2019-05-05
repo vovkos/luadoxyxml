@@ -321,7 +321,7 @@ public:
 	bool
 	addSource(const sl::String& source)
 	{
-		return m_sourceList.insertTail(source);
+		return m_sourceList.insertTail(source) != NULL;
 	}
 
 	bool
