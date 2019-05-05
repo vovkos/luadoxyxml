@@ -509,7 +509,7 @@ Module::generateGlobalNamespaceDocumentation(
 	*indexXml = "<compound kind='file' refid='global'><name>global</name></compound>\n";
 
 	*itemXml =
-		"<compounddef kind='file' id='global' language='Lua'>\n"
+		"<compounddef kind='file' id='global' language='C++'>\n"
 		"<compoundname>global</compoundname>\n";
 
 	static char compoundFileHdr[] =
