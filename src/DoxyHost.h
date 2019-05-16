@@ -81,7 +81,7 @@ public:
 		);
 
 	virtual
-	void
+	bool
 	processCustomCommand(
 		const sl::StringRef& command,
 		const sl::StringRef& param,

@@ -119,7 +119,7 @@ Variable::isLuaStruct()
 		return false;
 
 	ensureDoxyBlock();
-	return m_doxyBlock->getInternalDescription().find(":luastruct:") != -1;
+	return m_doxyBlock->getInternalDescription().find("%luastruct%") != -1;
 }
 
 bool
@@ -129,7 +129,7 @@ Variable::isLuaEnum()
 		return false;
 
 	ensureDoxyBlock();
-	return m_doxyBlock->getInternalDescription().find(":luaenum:") != -1;
+	return m_doxyBlock->getInternalDescription().find("%luaenum%") != -1;
 }
 
 bool
@@ -184,7 +184,7 @@ Variable::generateVariableDocumentation(
 bool
 Variable::generateLuaBaseTypeDocumentation(sl::String* itemXml)
 {
-	static char token[] = ":luabasetype(";
+	static char token[] = "%luabasetype(";
 
 	sl::String text = m_doxyBlock->getInternalDescription();
 	size_t pos = 0;

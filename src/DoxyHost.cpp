@@ -86,28 +86,33 @@ DoxyHost::generateGlobalNamespaceDocumentation(
 	return m_module->generateGlobalNamespaceDocumentation(outputDir, itemXml, indexXml);
 }
 
-void
+bool
 DoxyHost::processCustomCommand(
 	const sl::StringRef& commandName,
 	const sl::StringRef& param,
 	dox::BlockData* block
 	)
 {
+	bool isParamUsed = false;
+
 	CustomCommand command = CustomCommandNameMap::findValue(commandName, CustomCommand_Undefined);
 	switch (command)
 	{
 	case CustomCommand_LuaStruct:
-		block->m_internalDescription += ":luastruct:";
+		block->m_internalDescription += "%luastruct%";
 		break;
 
 	case CustomCommand_LuaEnum:
-		block->m_internalDescription += ":luaenum:";
+		block->m_internalDescription += "%luaenum%";
 		break;
 
 	case CustomCommand_LuaBaseType:
-		block->m_internalDescription += ":luabasetype(" + param + "):";
+		block->m_internalDescription += "%luabasetype(" + param + ")";
+		isParamUsed = true;
 		break;
 	}
+
+	return isParamUsed;
 }
 
 //..............................................................................
