@@ -99,15 +99,15 @@ DoxyHost::processCustomCommand(
 	switch (command)
 	{
 	case CustomCommand_LuaStruct:
-		block->m_internalDescription += "%luastruct%";
+		block->m_internalDescription += ":luastruct:";
 		break;
 
 	case CustomCommand_LuaEnum:
-		block->m_internalDescription += "%luaenum%";
+		block->m_internalDescription += ":luaenum:";
 		break;
 
 	case CustomCommand_LuaBaseType:
-		block->m_internalDescription += "%luabasetype(" + param + ")";
+		block->m_internalDescription += ":luabasetype(" + param + ")";
 		isParamUsed = true;
 		break;
 	}
