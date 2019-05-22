@@ -49,6 +49,9 @@ Please note, that in *direct mode* only a small subset of Doxygen `special comma
 * ``\ingroup``
 * ``\title``
 * ``\brief``
+* ``\details``
+* ``\param``
+* ``\return`` = ``\returns`` = ``\result``
 * ``\see`` = ``\sa``
 
 If you use **reStructuredText** inside doxy-comments, you don't really need any of the Doxygen formatting commands -- in this case the *direct mode* is the right choice. However, if you *do need* advanced Doxygen commands, then you can use Doxygen as the main processor and ``luadoxyxml`` as a *filter* as described in the next session.
@@ -113,14 +116,15 @@ Once you have generated a Doxygen XML database, you can use it to build beautifu
 Lua tables types
 ~~~~~~~~~~~~~~~~
 
-Lua uses dynamic duck-typing, so there are no type definitions. However, most Lua programs usually expect table variables and/or arguments to contain certain fields, i.e. belong to a some *duck-type*.
+Lua uses dynamic duck-typing, so there are no type definitions. However, most Lua programs usually expect table variables and/or arguments to contain certain fields, i.e. belong to a some *duck-type*. These duck-types may even form some hierarchies when a child table-type *inherits* all the fields of a base field-type.
 
-To document these table *duck-types*, LuaDoxyXML provides the ``\\luastruct`` command which can be used as such:
+To document these table *duck-types*, LuaDoxyXML provides ``\\luastruct`` and ``\\luabasetype`` commands which can be used as such:
 
 .. code:: lua
 
 	--[[!
 		\luastruct
+		\luabase MyBaseType
 		\brief This is not a variable, this is a table-type.
 
 		Detailed description of ``MyType`` follows here...
@@ -129,7 +133,6 @@ To document these table *duck-types*, LuaDoxyXML provides the ``\\luastruct`` co
 	MyType = {
 		field1, --!< field1 documentation
 		field2, --!< field2 documentation
-
 
 		--! field3 documentation
 
@@ -142,4 +145,33 @@ To document these table *duck-types*, LuaDoxyXML provides the ``\\luastruct`` co
 		field4,
 	}
 
+Lua enum types
+~~~~~~~~~~~~~~
 
+Similar to table types, there are *enumeration* types, i.e. when some variable or field must have a value from some predefined list.
+
+To document these table *duck-types*, LuaDoxyXML provides the ``\\luaenum`` command which can be used as such:
+
+.. code:: lua
+
+	--[[!
+		\luaenum
+		\brief This is not a variable, this is a enum-type.
+
+		Detailed description of ``MyEnum`` follows here...
+	]]
+
+	MyEnum = {
+		"value1", --!< value1 documentation
+		"value2", --!< value2 documentation
+
+		--! value3 documentation
+
+		"value3",
+
+		--[[!
+			value4 documentation
+		]]
+
+		"value4",
+	}
