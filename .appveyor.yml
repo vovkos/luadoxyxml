@@ -1,28 +1,23 @@
 #...............................................................................
 #
-#  This file is part of the Doxyrest toolkit.
+#  This file is part of the LuaDoxyXML toolkit.
 #
-#  Doxyrest is distributed under the MIT license.
+#  LuaDoxyXML is distributed under the MIT license.
 #  For details see accompanying license.txt file,
 #  the public copy of which is also available at:
-#  http://tibbo.com/downloads/archive/doxyrest/license.txt
+#  http://tibbo.com/downloads/archive/luadoxyxml/license.txt
 #
 #...............................................................................
 
-branches:
-    only:
-        - master
-
-image: Visual Studio 2015
+image:
+    - Visual Studio 2015
+    - Visual Studio 2017
 
 init:
     - git config --global core.autocrlf input
 
-clone_folder: c:\projects\doxyrest
+clone_folder: c:\projects\luadoxyxml
 shallow_clone: true
-
-matrix:
-    fast_finish: false
 
 platform:
     - x64
@@ -36,7 +31,23 @@ environment:
     matrix:
         - TOOLCHAIN: msvc10
         - TOOLCHAIN: msvc12
-        - TOOLCHAIN: msvc14
+        - TOOLCHAIN: msvc15
+
+matrix:
+    fast_finish: false
+
+    exclude:
+        -   image: Visual Studio 2015
+            TOOLCHAIN: msvc15
+
+        -   image: Visual Studio 2017
+            TOOLCHAIN: msvc10
+
+        -   image: Visual Studio 2017
+            TOOLCHAIN: msvc12
+
+        -   image: Visual Studio 2017
+            TOOLCHAIN: msvc14
 
 install:
     - call ci\appveyor\set-env.bat %TOOLCHAIN% %PLATFORM%

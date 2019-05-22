@@ -1,15 +1,15 @@
 #...............................................................................
 #
-#  This file is part of the Doxyrest toolkit.
+#  This file is part of the LuaDoxyXML toolkit.
 #
-#  Doxyrest is distributed under the MIT license.
+#  LuaDoxyXML is distributed under the MIT license.
 #  For details see accompanying license.txt file,
 #  the public copy of which is also available at:
-#  http://tibbo.com/downloads/archive/doxyrest/license.txt
+#  http://tibbo.com/downloads/archive/luadoxyxml/license.txt
 #
 #...............................................................................
 
-dist:     trusty
+dist:     xenial
 sudo:     required
 language: cpp
 
