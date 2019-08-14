@@ -191,4 +191,11 @@ if(UNIX)
 	endif()
 endif()
 
+#. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+install(
+	TARGETS luadoxyxml
+	DESTINATION ${LUADOXYXML_INSTALL_BIN_SUBDIR}
+	)
+
 #...............................................................................
