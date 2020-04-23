@@ -81,7 +81,7 @@ AXL_SL_BEGIN_CMD_LINE_SWITCH_TABLE(CmdLineSwitchTable, CmdLineSwitchKind)
 	AXL_SL_CMD_LINE_SWITCH(
 		CmdLineSwitchKind_DoxygenFilter,
 		"doxygen-filter", NULL,
-		"Specify master (index) output file"
+		"Doxygen filter mode (output C-like source)"
 		)
 AXL_SL_END_CMD_LINE_SWITCH_TABLE()
 
