@@ -67,14 +67,17 @@ Please note that it's not necessary to do this pre-processing manually for each 
 
 .. code:: bash
 
-	# scan the project directory for Lua files
-	FILE_PATTERNS = *.lua
-
 	# luadoxyxml outputs C++-alike code
 	EXTENSION_MAPPING = lua=C++
 
+	# scan the project directory for Lua files
+	FILE_PATTERNS = *.lua
+
 	# ... or specify files directly
 	INPUT = main.lua utils.lua
+
+	# Doxyrest uses .lua file as a config -- exclude it
+	EXCLUDE = doxyrest-config.lua
 
 	# for each Lua file, invoke luadoxyxml
 	FILTER_PATTERNS = *.lua="<path-to-luadoxyxml> --doxygen-filter"
@@ -83,6 +86,13 @@ Please note that it's not necessary to do this pre-processing manually for each 
 	GENERATE_XML = YES
 	XML_PROGRAMLISTING = NO
 	XML_OUTPUT = <doxygen-xml-dir>
+
+	# mask luadoxyxml-specific commands (avoid warnings and undesired effects)
+	ALIASES += "luamodule="
+	ALIASES += "luaenum="
+	ALIASES += "luaclass="
+	ALIASES += "luastruct="
+	ALIASES += "luabasetype{1}="
 
 When ``Doxyfile`` is prepared, just invoke Doxygen:
 
@@ -113,12 +123,12 @@ Once you have generated a Doxygen XML database, you can use it to build beautifu
 		<doxyrest-rst-dir> \
 		<final-html-dir>
 
-Lua tables types
-~~~~~~~~~~~~~~~~
+Lua table types
+~~~~~~~~~~~~~~~
 
-Lua uses dynamic duck-typing, so there are no type definitions. However, most Lua programs usually expect table variables and/or arguments to contain certain fields, i.e. belong to a some *duck-type*. These duck-types may even form some hierarchies when a child table-type *inherits* all the fields of a base field-type.
+Lua uses dynamic duck-typing, so there are no type definitions. However, most Lua programs usually expect table variables and/or arguments to contain certain fields, i.e. belong to some *duck-type*. These duck-types may even form some hierarchies when a child table-type *inherits* all the fields of a base field-type.
 
-To document these table *duck-types*, LuaDoxyXML provides ``\\luastruct`` and ``\\luabasetype`` commands which can be used as such:
+To document these table *duck-types*, LuaDoxyXML provides ``\luastruct`` and ``\luabasetype`` commands which can be used as such:
 
 .. code:: lua
 
@@ -150,7 +160,7 @@ Lua enum types
 
 Similar to table types, there are *enumeration* types, i.e. when some variable or field must have a value from some predefined list.
 
-To document these table *duck-types*, LuaDoxyXML provides the ``\\luaenum`` command which can be used as such:
+To document these table *duck-types*, LuaDoxyXML provides the ``\luaenum`` command which can be used as such:
 
 .. code:: lua
 
@@ -175,3 +185,34 @@ To document these table *duck-types*, LuaDoxyXML provides the ``\\luaenum`` comm
 
 		"value4",
 	}
+
+Lua classes and modules
+~~~~~~~~~~~~~~~~~~~~~~~
+
+Often times Lua functions are grouped together into *classes* or *modules*. In Lua, these OOP concepts are implemented as *tables* containing *methods* rather than primitive values.
+
+To document *classes* and *modules*, LuaDoxyXML provides ``\luaclass`` and ``\luamodule`` commands which can be used as such:
+
+.. code:: lua
+
+	--[[!
+		\luaclass
+		\brief This is a class (rather than a regular variable).
+
+		Detailed description of ``MyClass`` follows here...
+	]]
+
+	MyClass = {}
+
+	--! ``MyClass.foo`` is a regular function with no implicit parameters
+
+	function MyClass.foo(a, b)
+	end
+
+	--! ``MyClass:methodBar`` receives an implicit parameter ``self``
+
+	function MyClass:methodBar(a, b)
+		self.sum = a + b
+	end
+
+There are no principle differences between ``\luamodule``, ``\luaclass``, and ``\luastruct`` -- it's more of a convention. ``struct``-s are intended to be used for describing which fields are there in a table; a ``class`` is a special table which provides a set of methods and operations applicable to this table; ``module``-s are for grouping and organizing library code into reusable modules.
