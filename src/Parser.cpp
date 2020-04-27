@@ -22,35 +22,52 @@ Parser::Parser(Module* module):
 	m_scopeLevel = 0;
 }
 
-Table*
-Parser::createTable()
-{
-	Table* table = AXL_MEM_NEW(Table);
-	m_module->m_tableList.insertTail(table);
-	return table;
-}
-
 Variable*
-Parser::declareVariableEx(
-	ModuleItemKind itemKind,
+Parser::declareVariable(
 	const Token::Pos& pos,
-	const sl::StringRef& name
+	const sl::StringRef& name,
+	ModuleItemKind itemKind
 	)
 {
-	if (itemKind == ModuleItemKind_Variable && m_module->m_itemMap.find(name)) // re-declaration
-		return NULL;
-
-	Variable* variable = AXL_MEM_NEW(Variable);
-	variable->m_itemKind = itemKind;
-	variable->m_name = name;
-
-	finalizeDeclaration(
-		pos,
-		variable,
-		itemKind == ModuleItemKind_Variable ? name : NULL
-		);
-
+	bool isGlobalName = itemKind == ModuleItemKind_Variable;
+	Variable* variable = m_module->createVariable(name, itemKind);
+	finalizeDeclaration(pos, variable, isGlobalName);
 	return variable;
+}
+
+size_t
+Parser::declareLocalVariables(
+	const Token::Pos& pos,
+	const sl::BoxList<sl::StringRef>& nameList,
+	const sl::BoxList<Value>& initializerList
+	)
+{
+	size_t count = 0;
+	sl::ConstBoxIterator<sl::StringRef> it1 = nameList.getHead();
+	sl::ConstBoxIterator<Value> it2 = initializerList.getHead();
+	for (; it1 && it2; it1++, it2++, count++)
+	{
+		Variable* variable = declareVariable(pos, *it1);
+		variable->m_isLocal = true;
+		variable->m_initializer = *it2;
+	}
+
+	return count;
+}
+
+size_t
+Parser::initializeVariables(
+	const sl::ArrayRef<Variable*>& variableArray,
+	const sl::BoxList<Value>& initializerList
+	)
+{
+	size_t i = 0;
+	size_t variableCount = variableArray.getCount();
+	sl::ConstBoxIterator<Value> it = initializerList.getHead();
+	for (; i < variableCount && it; i++)
+		variableArray[i]->m_initializer = *it;
+
+	return i;
 }
 
 Variable*
@@ -59,7 +76,7 @@ Parser::declareIndexedField(
 	const Value& index
 	)
 {
-	Variable* field = declareVariableEx(ModuleItemKind_Field, pos, NULL);
+	Variable* field = declareVariable(pos, NULL, ModuleItemKind_Field);
 	field->m_index = index;
 	return field;
 }
@@ -70,24 +87,48 @@ Parser::declareUnnamedField(
 	const Value& initializer
 	)
 {
-	Variable* field = declareVariableEx(ModuleItemKind_Field, pos, NULL);
-	field->m_initializer = initializer;
+	Variable* field = declareVariable(pos, NULL, ModuleItemKind_Field);
+	field->setInitializer(initializer);
 	return field;
 }
 
 Function*
 Parser::declareFunction(
 	const Token::Pos& pos,
-	FunctionName* name
+	FunctionName* name,
+	bool isLocal
 	)
 {
-	sl::String fullName = name->getFullName();
-	if (m_module->m_itemMap.find(fullName)) // re-declaration
-		return NULL;
+	Function* function = m_module->createFunction(name->m_name);
+	function->m_isLocal = isLocal;
 
-	Function* function = AXL_MEM_NEW(Function);
-	sl::takeOver(&function->m_name, name);
-	finalizeDeclaration(pos, function, fullName);
+	if (name->m_list.isEmpty())
+	{
+		finalizeDeclaration(pos, function, true);
+		return function;
+	}
+
+	sl::BoxIterator<sl::StringRef> it = name->m_list.getHead();
+	Table* table = m_module->findTable(*it);
+	for (it++; table && it; it++)
+		table = m_module->findTableField(table, *it);
+
+	if (!table)
+		return NULL; // parent module/class must have been declared first
+
+	function->m_isMethod = name->m_isMethod;
+	Variable* field = m_module->createVariable(name->m_name, ModuleItemKind_Field);
+	field->setInitializer(function);
+	table->addField(field);
+	finalizeDeclaration(pos, function);
+	return function;
+}
+
+Function*
+Parser::declareFunction(const Token::Pos& pos)
+{
+	Function* function = m_module->createFunction();
+	finalizeDeclaration(pos, function);
 	return function;
 }
 
@@ -95,10 +136,9 @@ void
 Parser::finalizeDeclaration(
 	const Token::Pos& pos,
 	ModuleItem* item,
-	const sl::StringRef& name
+	bool isGlobalName
 	)
 {
-	item->m_module = m_module;
 	item->m_fileName = m_fileName;
 	item->m_pos = pos;
 
@@ -109,10 +149,12 @@ Parser::finalizeDeclaration(
 		block->m_item = item;
 	}
 
-	m_module->m_itemList.insertTail(item);
-
-	if (!name.isEmpty())
-		m_module->m_itemMap[name] = item;
+	if (isGlobalName && !item->m_name.isEmpty())
+	{
+		sl::StringHashTableIterator<ModuleItem*> it = m_module->m_itemMap.visit(item->m_name);
+		if (!it->m_value) // keep the original declaration
+			it->m_value = item;
+	}
 
 	m_lastDeclaredItem = item;
 }

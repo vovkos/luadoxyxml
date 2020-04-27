@@ -15,6 +15,8 @@
 
 class Module;
 struct Table;
+struct Variable;
+struct Function;
 
 //..............................................................................
 
@@ -24,6 +26,7 @@ enum ValueKind
 	ValueKind_Expression,
 	ValueKind_Constant,
 	ValueKind_Variable,
+	ValueKind_Function,
 	ValueKind_Table,
 };
 
@@ -36,12 +39,11 @@ struct Value
 	ValueKind m_valueKind;
 	sl::StringRef m_source;
 	Table* m_table;
+	Function* m_function;
 
-	Value()
-	{
-		m_valueKind = ValueKind_Empty;
-		m_table = NULL;
-	}
+	Value();
+	Value(Table* table);
+	Value(Function* function);
 
 	bool
 	isEmpty() const
@@ -61,8 +63,38 @@ struct Value
 	void
 	appendSource(
 		const Token::Pos& pos,
-		ValueKind valueKind = ValueKind_Expression
-		);
+		ValueKind valueKind
+		)
+	{
+		appendSource(pos);
+		m_valueKind = valueKind;
+	}
+
+	void
+	appendSource(const Token::Pos& pos);
+};
+
+//..............................................................................
+
+struct Table: sl::ListLink
+{
+	Variable* m_lvalue;
+	sl::Array<Variable*> m_fieldArray;
+	sl::StringHashTable<Variable*> m_fieldMap;
+
+	Table()
+	{
+		m_lvalue = NULL;
+	}
+
+	Variable*
+	findField(const sl::StringRef& name)
+	{
+		return m_fieldMap.findValue(name, NULL);
+	}
+
+	void
+	addField(Variable* field);
 };
 
 //..............................................................................
@@ -82,6 +114,9 @@ struct ModuleItem: sl::ListLink
 {
 	ModuleItemKind m_itemKind;
 	Module* m_module;
+	Table* m_table;
+	bool m_isLocal;
+	sl::StringRef m_name;
 	sl::String m_fileName;
 	Token::Pos m_pos;
 	dox::Block* m_doxyBlock;
@@ -109,6 +144,16 @@ struct ModuleItem: sl::ListLink
 		) = 0;
 
 	virtual
+	bool
+	generateCompoundMemberDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* memberXml,
+		sl::String* compoundXml,
+		sl::String* sectionXml,
+		sl::String* indexXml
+		);
+
+	virtual
 	void
 	generateDoxygenFilterOutput(const sl::StringRef& indent = "") = 0;
 
@@ -124,26 +169,48 @@ struct ModuleItem: sl::ListLink
 
 	void
 	printDoxygenFilterComment(const sl::StringRef& indent = "");
+
+protected:
+	dox::Block*
+	prepareDoxyBlock();
 };
 
 //..............................................................................
 
+enum VariableKind
+{
+	VariableKind_Undefined,
+	VariableKind_Normal,
+	VariableKind_Enum,
+	VariableKind_Class,
+	VariableKind_Struct,
+	VariableKind_Module,
+};
+
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
 struct Variable: ModuleItem
 {
-	sl::StringRef m_name;
+	VariableKind m_variableKind;
 	Value m_index;
 	Value m_initializer;
 
-	Variable()
+	Variable();
+
+	VariableKind
+	getVariableKind()
 	{
-		m_itemKind = ModuleItemKind_Variable;
+		return m_variableKind ? m_variableKind : ensureVariableKind();
 	}
 
 	bool
-	isLuaStruct();
+	isLuaClass()
+	{
+		return getVariableKind() >= VariableKind_Class;
+	}
 
-	bool
-	isLuaEnum();
+	void
+	setInitializer(const Value& value);
 
 	virtual
 	sl::String
@@ -158,10 +225,29 @@ struct Variable: ModuleItem
 		);
 
 	virtual
+	bool
+	generateCompoundMemberDocumentation(
+		const sl::StringRef& outputDir,
+		sl::String* memberXml,
+		sl::String* compoundXml,
+		sl::String* sectionXml,
+		sl::String* indexXml
+		);
+
+	virtual
 	void
 	generateDoxygenFilterOutput(const sl::StringRef& indent);
 
 protected:
+	VariableKind
+	ensureVariableKind();
+
+	ModuleItem*
+	findBaseType(const sl::StringRef& name);
+
+	size_t
+	buildLuaBaseTypeNameList(sl::BoxList<sl::String>* list);
+
 	bool
 	generateVariableDocumentation(
 		const sl::StringRef& outputDir,
@@ -173,7 +259,7 @@ protected:
 	generateLuaBaseTypeDocumentation(sl::String* itemXml);
 
 	bool
-	generateLuaStructDocumentation(
+	generateLuaClassDocumentation(
 		const sl::StringRef& outputDir,
 		sl::String* itemXml,
 		sl::String* indexXml
@@ -189,8 +275,11 @@ protected:
 	void
 	generateVariableDoxygenFilterOutput(const sl::StringRef& indent);
 
+	bool
+	generateLuaBaseTypeDoxygenFilterOutput(const sl::StringRef& indent);
+
 	void
-	generateLuaStructDoxygenFilterOutput(const sl::StringRef& indent);
+	generateLuaClassDoxygenFilterOutput(const sl::StringRef& indent);
 
 	void
 	generateLuaEnumDoxygenFilterOutput(const sl::StringRef& indent);
@@ -198,50 +287,16 @@ protected:
 
 //..............................................................................
 
-struct Table: sl::ListLink
-{
-	sl::Array<Variable*> m_fieldArray;
-};
-
-//..............................................................................
-
 struct FunctionName
 {
-	sl::StringRef m_first;
 	sl::BoxList<sl::StringRef> m_list;
+	sl::StringRef m_name;
 	bool m_isMethod;
 
 	FunctionName()
 	{
 		m_isMethod = false;
 	}
-
-	FunctionName(const FunctionName& src)
-	{
-		operator = (src);
-	}
-
-#if (_AXL_CPP_HAS_RVALUE_REF)
-	FunctionName(FunctionName&& src)
-	{
-		operator = (src);
-	}
-#endif
-
-	FunctionName&
-	operator = (const FunctionName& src);
-
-#if (_AXL_CPP_HAS_RVALUE_REF)
-	FunctionName&
-	operator = (FunctionName&& src)
-	{
-		sl::takeOver(this, &src);
-		return *this;
-	}
-#endif
-
-	sl::StringRef
-	getFullName() const;
 };
 
 // . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
@@ -261,13 +316,10 @@ struct FunctionParamArray
 
 struct Function: ModuleItem
 {
-	FunctionName m_name;
 	FunctionParamArray m_paramArray;
+	bool m_isMethod;
 
-	Function()
-	{
-		m_itemKind = ModuleItemKind_Function;
-	}
+	Function();
 
 	virtual
 	sl::String
@@ -318,6 +370,33 @@ public:
 		return m_itemMap.findValue(name, NULL);
 	}
 
+	Variable*
+	createVariable(
+		const sl::StringRef& name,
+		ModuleItemKind itemKind = ModuleItemKind_Variable
+		);
+
+	Variable*
+	createTableVariable(
+		const sl::StringRef& name,
+		ModuleItemKind itemKind = ModuleItemKind_Variable
+		);
+
+	Function*
+	createFunction(const sl::StringRef& name = sl::StringRef());
+
+	Table*
+	createTable();
+
+	Table*
+	findTable(const sl::StringRef& name);
+
+	Table*
+	findTableField(
+		Table* table,
+		const sl::StringRef& name
+		);
+
 	bool
 	addSource(const sl::String& source)
 	{
@@ -327,12 +406,32 @@ public:
 	bool
 	generateGlobalNamespaceDocumentation(
 		const sl::StringRef& outputDir,
-		sl::String* itemXml,
+		sl::String* globalXml,
 		sl::String* indexXml
 		);
 
 	void
 	generateDoxygenFilterOutput();
 };
+
+//..............................................................................
+
+inline
+dox::Block*
+ModuleItem::ensureDoxyBlock()
+{
+	return m_doxyBlock ? m_doxyBlock : m_module->getDoxyHost()->getItemBlock(this);
+}
+
+// . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+inline
+ModuleItem*
+Variable::findBaseType(const sl::StringRef& name)
+{
+	return m_table ?
+		(ModuleItem*)m_table->findField(name) :
+		m_module->findItem(name);
+}
 
 //..............................................................................

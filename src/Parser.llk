@@ -51,10 +51,23 @@ Members2
 	createTable();
 
 	Variable*
-	declareVariableEx(
-		ModuleItemKind itemKind,
+	declareVariable(
 		const Token::Pos& pos,
-		const sl::StringRef& name
+		const sl::StringRef& name,
+		ModuleItemKind itemKind = ModuleItemKind_Variable
+		);
+
+	size_t
+	declareLocalVariables(
+		const Token::Pos& pos,
+		const sl::BoxList<sl::StringRef>& nameList,
+		const sl::BoxList<Value>& initializerList
+		);
+
+	size_t
+	initializeVariables(
+		const sl::ArrayRef<Variable*>& variableArray,
+		const sl::BoxList<Value>& initializerList
 		);
 
 	Variable*
@@ -63,7 +76,7 @@ Members2
 		const sl::StringRef& name
 		)
 	{
-		return declareVariableEx(ModuleItemKind_Field, pos, name);
+		return declareVariable(pos, name, ModuleItemKind_Field);
 	}
 
 	Variable*
@@ -79,34 +92,29 @@ Members2
 		);
 
 	Variable*
-	declareVariable(
-		const Token::Pos& pos,
-		const sl::StringRef& name
-		)
-	{
-		return declareVariableEx(ModuleItemKind_Variable, pos, name);
-	}
-
-	Variable*
 	declareFunctionParam(
 		const Token::Pos& pos,
 		const sl::StringRef& name
 		)
 	{
-		return declareVariableEx(ModuleItemKind_FunctionParam, pos, name);
+		return declareVariable(pos, name, ModuleItemKind_FunctionParam);
 	}
 
 	Function*
 	declareFunction(
 		const Token::Pos& pos,
-		FunctionName* name
+		FunctionName* name,
+		bool isLocal
 		);
+
+	Function*
+	declareFunction(const Token::Pos& pos);
 
 	void
 	finalizeDeclaration(
 		const Token::Pos& pos,
 		ModuleItem* item,
-		const sl::StringRef& name = NULL
+		bool isGlobalName = false
 		);
 }
 
@@ -164,15 +172,11 @@ statement
 				m_scopeLevel--;
 			}
 	|	function_decl
-	|	TokenKind_Local
+	|	TokenKind_Local name_list ('=' expression_list $e)?
 			{
-				m_scopeLevel++;
+				if (!m_scopeLevel)
+					declareLocalVariables($1.m_pos, $2.m_nameList, $e.m_valueList);
 			}
-		TokenKind_Function TokenKind_Identifier function_body
-			{
-				m_scopeLevel--;
-			}
-	|	TokenKind_Local name_list ('=' expression_list)?
 	|	';'
 	;
 
@@ -181,9 +185,9 @@ function_decl
 	{
 		Function* $function;
 	}
-	:	TokenKind_Function function_name
+	:	TokenKind_Local? TokenKind_Function function_name
 			{
-				$function = !m_scopeLevel ? declareFunction($1.m_pos, &$2.m_name) : NULL;
+				$function = !m_scopeLevel ? declareFunction($2.m_pos, &$3.m_name, &$1 != NULL) : NULL;
 				m_scopeLevel++;
 			}
 		function_body $b
@@ -206,16 +210,18 @@ class
 function_name
 	:	TokenKind_Identifier $i1
 			{
-				$.m_name.m_first = $i1.m_data.m_string;
+				$.m_name.m_name = $i1.m_data.m_string;
 			}
 		('.' TokenKind_Identifier $i2
 			{
-				$.m_name.m_list.insertTail($i2.m_data.m_string);
+				$.m_name.m_list.insertTail($.m_name.m_name);
+				$.m_name.m_name = $i2.m_data.m_string;
 			}
 		)*
 		(':' TokenKind_Identifier $i3
 			{
-				$.m_name.m_list.insertTail($i3.m_data.m_string);
+				$.m_name.m_list.insertTail($.m_name.m_name);
+				$.m_name.m_name = $i3.m_data.m_string;
 				$.m_name.m_isMethod = true;
 			}
 		)?
@@ -273,43 +279,39 @@ name_list
 expression_stmt
 	local
 	{
-		Variable* $variable;
-	}
-	enter
-	{
-		$variable = NULL;
+		sl::Array<Variable*> $variableArray;
 	}
 	:	postfix_expr
 			{
 				if (!m_scopeLevel && $1.m_value.m_valueKind == ValueKind_Variable)
-					$variable = declareVariable($1.m_value.m_firstTokenPos, $1.m_value.m_source);
+					$variableArray.append(declareVariable($1.m_value.m_firstTokenPos, $1.m_value.m_source));
 			}
-		(',' postfix_expr
+		(',' postfix_expr $v2
 			{
-				$variable = NULL;
+				if (!m_scopeLevel && $v2.m_value.m_valueKind == ValueKind_Variable)
+					$variableArray.append(declareVariable($v2.m_value.m_firstTokenPos, $v2.m_value.m_source));
 			}
 		)*
 		('='
 		expression_list $e
 			{
-				if ($variable)
-					$variable->m_initializer = $e.m_value;
+				initializeVariables($variableArray, $e.m_valueList);
 			}
 		)?
 	;
 
 class
 {
-	Value m_value;
+	sl::BoxList<Value> m_valueList;
 }
 expression_list
 	:	expression
 			{
-				$.m_value = $1.m_value;
+				$.m_valueList.insertTail($1.m_value);
 			}
-		(',' expression
+		(',' expression $e2
 			{
-				$.m_value.appendSource($3.m_value.m_lastTokenPos);
+				$.m_valueList.insertTail($e2.m_value);
 			}
 		)*
 	;
@@ -325,7 +327,7 @@ expression
 			}
 		(bin_op expression
 			{
-				$.m_value.appendSource($3.m_value.m_lastTokenPos);
+				$.m_value.appendSource($3.m_value.m_lastTokenPos, ValueKind_Expression);
 			}
 		)*
 	;
@@ -342,7 +344,7 @@ unary_expr
 	|	un_op unary_expr
 			{
 				$.m_value.setFirstToken($1.m_pos);
-				$.m_value.appendSource($2.m_value.m_lastTokenPos);
+				$.m_value.appendSource($2.m_value.m_lastTokenPos, ValueKind_Expression);
 			}
 	;
 
@@ -357,7 +359,7 @@ postfix_expr
 			}
 		(postfix_op
 			{
-				$.m_value.appendSource($2.m_lastTokenPos);
+				$.m_value.appendSource($2.m_lastTokenPos, ValueKind_Expression);
 			}
 		)*
 	;
@@ -416,8 +418,10 @@ primary_expr
 			}
 	|	TokenKind_Function function_body
 			{
-				$.m_value.setFirstToken($1.m_pos);
+				$.m_value.setFirstToken($1.m_pos, ValueKind_Function);
 				$.m_value.appendSource($2.m_lastTokenPos);
+				$.m_value.m_function = declareFunction($1.m_pos);
+				sl::takeOver(&$.m_value.m_function->m_paramArray, &$2.m_paramArray);
 			}
 	|	table_constructor
 			{
@@ -425,8 +429,10 @@ primary_expr
 			}
 	|	'(' expression ')'
 			{
-				$.m_value.setFirstToken($1.m_pos);
+				$.m_value.setFirstToken($1.m_pos, $2.m_value.m_valueKind);
 				$.m_value.appendSource($3.m_pos);
+				$.m_value.m_table = $2.m_value.m_table;
+				$.m_value.m_function = $2.m_value.m_function;
 			}
 	;
 
@@ -457,23 +463,23 @@ table_constructor
 	:	'{'
 			{
 				$.m_value.setFirstToken($1.m_pos, ValueKind_Table);
-				$.m_value.m_table = createTable();
+				$.m_value.m_table = m_module->createTable();
 			}
 		field_list<$.m_value.m_table>?
 		'}'
 			{
-				$.m_value.appendSource($3.m_pos, ValueKind_Table);
+				$.m_value.appendSource($3.m_pos);
 			}
 	;
 
 field_list<Table* $table>
 	:	field
 			{
-				$table->m_fieldArray.append($1.m_field);
+				$table->addField($1.m_field);
 			}
 		(field_sep (field
 			{
-				$table->m_fieldArray.append($3.m_field);
+				$table->addField($3.m_field);
 			}
 		)?)*
 	;
@@ -495,7 +501,7 @@ field
 			}
 		'=' expression $i
 			{
-				$.m_field->m_initializer = $i.m_value;
+				$.m_field->setInitializer($i.m_value);
 			}
 	|	TokenKind_Identifier
 			{
@@ -503,7 +509,7 @@ field
 			}
 		'=' expression $i
 			{
-				$.m_field->m_initializer = $i.m_value;
+				$.m_field->setInitializer($i.m_value);
 			}
 	|	expression
 			{

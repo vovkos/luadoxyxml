@@ -57,7 +57,11 @@ sl::StringRef
 DoxyHost::getItemCompoundElementName(handle_t item0)
 {
 	ModuleItem* item = (ModuleItem*)item0;
-	bool isCompoundFile = item->m_itemKind == ModuleItemKind_Variable && ((Variable*)item)->isLuaStruct();
+
+	bool isCompoundFile =
+		item->m_itemKind == ModuleItemKind_Variable &&
+		((Variable*)item)->isLuaClass();
+
 	return isCompoundFile ? "innerclass" : NULL;
 };
 
@@ -98,12 +102,20 @@ DoxyHost::processCustomCommand(
 	CustomCommand command = CustomCommandNameMap::findValue(commandName, CustomCommand_Undefined);
 	switch (command)
 	{
-	case CustomCommand_LuaStruct:
-		block->m_internalDescription += ":luastruct:";
+	case CustomCommand_LuaModule:
+		block->m_internalDescription += ":luamodule:";
 		break;
 
 	case CustomCommand_LuaEnum:
 		block->m_internalDescription += ":luaenum:";
+		break;
+
+	case CustomCommand_LuaStruct:
+		block->m_internalDescription += ":luastruct:";
+		break;
+
+	case CustomCommand_LuaClass:
+		block->m_internalDescription += ":luaclass:";
 		break;
 
 	case CustomCommand_LuaBaseType:
