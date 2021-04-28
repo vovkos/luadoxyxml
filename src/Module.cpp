@@ -704,7 +704,7 @@ Function::generateDoxygenFilterOutput(const sl::StringRef& indent)
 	}
 
 	char buffer[256];
-	sl::String paramIndent(ref::BufKind_Stack, buffer, sizeof(buffer));
+	sl::String paramIndent(rc::BufKind_Stack, buffer, sizeof(buffer));
 	paramIndent = indent + '\t';
 
 	size_t count = m_paramArray.m_array.getCount();
