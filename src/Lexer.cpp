@@ -20,8 +20,7 @@ Lexer::createStringToken(
 	int tokenKind,
 	size_t left,
 	size_t right
-	)
-{
+) {
 	Token* token = createToken(tokenKind);
 	ASSERT(token->m_pos.m_length >= left + right);
 
@@ -34,31 +33,27 @@ Token*
 Lexer::createIntegerToken(
 	int radix,
 	size_t left
-	)
-{
+) {
 	Token* token = createToken(TokenKind_Number);
 	token->m_data.m_double = (double) _strtoui64(ts + left, NULL, radix);
 	return token;
 }
 
 Token*
-Lexer::createFpToken()
-{
+Lexer::createFpToken() {
 	Token* token = createToken(TokenKind_Number);
 	token->m_data.m_double = strtod(ts, NULL);
 	return token;
 }
 
 Token*
-Lexer::createDoxyCommentToken(int tokenKind)
-{
+Lexer::createDoxyCommentToken(int tokenKind) {
 	ASSERT(te - ts >= 3 && ts[0] == '-' && ts[1] == '-');
 
 	size_t left = 0;
 	size_t right = 0;
 
-	switch (tokenKind)
-	{
+	switch (tokenKind) {
 	case TokenKind_DoxyComment_sl: // --!
 		ASSERT(ts[2] == '!');
 		left = 3;

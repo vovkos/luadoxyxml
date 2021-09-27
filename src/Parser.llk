@@ -12,16 +12,14 @@
 ParserClassName = Parser;
 TokenClassName = Token;
 
-HeaderFileBegin
-{
+HeaderFileBegin {
 	#pragma once
 
 	#include "Lexer.h"
 	#include "Module.h"
 }
 
-Members
-{
+Members {
 protected:
 	Module* m_module;
 	ModuleItem* m_lastDeclaredItem;
@@ -35,20 +33,17 @@ public:
 	create(
 		const sl::StringRef& fileName,
 		int startSymbolKind = StartSymbol
-		)
-	{
+	) {
 		llk::Parser<Parser, Token>::create(fileName, startSymbolKind);
 	}
 
 	ModuleItem*
-	getLastDeclaredItem()
-	{
+	getLastDeclaredItem() {
 		return m_lastDeclaredItem;
 	}
 
 	int
-	getScopeLevel()
-	{
+	getScopeLevel() {
 		return m_scopeLevel;
 	}
 
@@ -58,8 +53,7 @@ public:
 		const lex::LineCol& pos,
 		bool isSingleLine,
 		handle_t lastDeclaredItem
-		)
-	{
+	) {
 		m_doxyParser.addComment(comment, pos, isSingleLine, lastDeclaredItem);
 	}
 
@@ -72,27 +66,26 @@ protected:
 		const Token::Pos& pos,
 		const sl::StringRef& name,
 		ModuleItemKind itemKind = ModuleItemKind_Variable
-		);
+	);
 
 	size_t
 	declareLocalVariables(
 		const Token::Pos& pos,
 		const sl::BoxList<sl::StringRef>& nameList,
 		const sl::BoxList<Value>& initializerList
-		);
+	);
 
 	size_t
 	initializeVariables(
 		const sl::ArrayRef<Variable*>& variableArray,
 		const sl::BoxList<Value>& initializerList
-		);
+	);
 
 	Variable*
 	declareNamedField(
 		const Token::Pos& pos,
 		const sl::StringRef& name
-		)
-	{
+	) {
 		return declareVariable(pos, name, ModuleItemKind_Field);
 	}
 
@@ -100,20 +93,19 @@ protected:
 	declareIndexedField(
 		const Token::Pos& pos,
 		const Value& index
-		);
+	);
 
 	Variable*
 	declareUnnamedField(
 		const Token::Pos& pos,
 		const Value& initializer
-		);
+	);
 
 	Variable*
 	declareFunctionParam(
 		const Token::Pos& pos,
 		const sl::StringRef& name
-		)
-	{
+	) {
 		return declareVariable(pos, name, ModuleItemKind_FunctionParam);
 	}
 
@@ -122,7 +114,7 @@ protected:
 		const Token::Pos& pos,
 		FunctionName* name,
 		bool isLocal
-		);
+	);
 
 	Function*
 	declareFunction(const Token::Pos& pos);
@@ -132,7 +124,7 @@ protected:
 		const Token::Pos& pos,
 		ModuleItem* item,
 		bool isGlobalName = false
-		);
+	);
 }
 
 lookahead(2);
@@ -144,8 +136,7 @@ block
 	;
 
 statement
-	enter
-	{
+	enter {
 		m_lastDeclaredItem = NULL;
 	}
 	:	expression_stmt
@@ -200,8 +191,7 @@ statement
 	;
 
 function_decl
-	local
-	{
+	local {
 		Function* $function;
 	}
 	:	TokenKind_Local? TokenKind_Function function_name
@@ -222,8 +212,7 @@ label
 	:	TokenKind_Context TokenKind_Identifier TokenKind_Context
 	;
 
-class
-{
+class {
 	FunctionName m_name;
 }
 function_name
@@ -246,8 +235,7 @@ function_name
 		)?
 	;
 
-class
-{
+class {
 	FunctionParamArray m_paramArray;
 	Token::Pos m_lastTokenPos;
 }
@@ -279,8 +267,7 @@ for_iterator
 	| 	name_list TokenKind_In expression_list
 	;
 
-class
-{
+class {
 	sl::BoxList<sl::StringRef> m_nameList;
 }
 name_list
@@ -296,8 +283,7 @@ name_list
 	;
 
 expression_stmt
-	local
-	{
+	local {
 		sl::Array<Variable*> $variableArray;
 	}
 	:	postfix_expr
@@ -319,8 +305,7 @@ expression_stmt
 		)?
 	;
 
-class
-{
+class {
 	sl::BoxList<Value> m_valueList;
 }
 expression_list
@@ -335,8 +320,7 @@ expression_list
 		)*
 	;
 
-class
-{
+class {
 	Value m_value;
 }
 expression
@@ -351,8 +335,7 @@ expression
 		)*
 	;
 
-class
-{
+class {
 	Value m_value;
 }
 unary_expr
@@ -367,8 +350,7 @@ unary_expr
 			}
 	;
 
-class
-{
+class {
 	Value m_value;
 }
 postfix_expr
@@ -383,8 +365,7 @@ postfix_expr
 		)*
 	;
 
-class
-{
+class {
 	Token::Pos m_lastTokenPos;
 }
 postfix_op
@@ -402,8 +383,7 @@ postfix_op
 			}
 	;
 
-class
-{
+class {
 	Value m_value;
 }
 primary_expr
@@ -455,8 +435,7 @@ primary_expr
 			}
 	;
 
-class
-{
+class {
 	Token::Pos m_lastTokenPos;
 }
 arguments
@@ -474,8 +453,7 @@ arguments
 			}
 	;
 
-class
-{
+class {
 	Value m_value;
 }
 table_constructor
@@ -503,13 +481,11 @@ field_list<Table* $table>
 		)?)*
 	;
 
-class
-{
+class {
 	Variable* m_field;
 }
 field
-	enter
-	{
+	enter {
 		$.m_field = NULL;
 	}
 	:	'[' expression ']'
@@ -567,8 +543,7 @@ bin_op
 	|	'^'
 	;
 
-class
-{
+class {
 	Token::Pos m_pos;
 }
 un_op

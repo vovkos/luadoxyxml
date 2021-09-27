@@ -14,30 +14,26 @@
 
 //..............................................................................
 
-Value::Value()
-{
+Value::Value() {
 	m_valueKind = ValueKind_Empty;
 	m_table = NULL;
 	m_function = NULL;
 }
 
-Value::Value(Table* table)
-{
+Value::Value(Table* table) {
 	m_valueKind = ValueKind_Table;
 	m_table = table;
 	m_function = NULL;
 }
 
-Value::Value(Function* function)
-{
+Value::Value(Function* function) {
 	m_valueKind = ValueKind_Function;
 	m_table = NULL;
 	m_function = function;
 }
 
 void
-Value::clear()
-{
+Value::clear() {
 	m_valueKind = ValueKind_Empty;
 	m_table = NULL;
 	m_source.clear();
@@ -47,8 +43,7 @@ void
 Value::setFirstToken(
 	const Token::Pos& pos,
 	ValueKind valueKind
-	)
-{
+) {
 	ASSERT(m_valueKind == ValueKind_Empty);
 
 	m_firstTokenPos = pos;
@@ -58,8 +53,7 @@ Value::setFirstToken(
 }
 
 void
-Value::appendSource(const Token::Pos& pos)
-{
+Value::appendSource(const Token::Pos& pos) {
 	ASSERT(m_valueKind != ValueKind_Empty);
 	ASSERT(!m_source.isEmpty());
 
@@ -72,8 +66,7 @@ Value::appendSource(const Token::Pos& pos)
 //..............................................................................
 
 void
-Table::addField(Variable* field)
-{
+Table::addField(Variable* field) {
 	m_fieldArray.append(field);
 
 	if (!field->m_name.isEmpty())
@@ -84,8 +77,7 @@ Table::addField(Variable* field)
 
 //..............................................................................
 
-ModuleItem::ModuleItem()
-{
+ModuleItem::ModuleItem() {
 	m_itemKind = ModuleItemKind_Undefined;
 	m_module = NULL;
 	m_table = NULL;
@@ -94,8 +86,7 @@ ModuleItem::ModuleItem()
 }
 
 void
-ModuleItem::printDoxygenFilterComment(const sl::StringRef& indent)
-{
+ModuleItem::printDoxygenFilterComment(const sl::StringRef& indent) {
 	if (m_doxyBlock)
 		printf("%s/*! %s */\n", indent.sz(), m_doxyBlock->getSource().getTrimmedString().sz());
 }
@@ -107,8 +98,7 @@ ModuleItem::generateCompoundMemberDocumentation(
 	sl::String* compoundXml,
 	sl::String* sectionXml,
 	sl::String* indexXml
-	)
-{
+) {
 	return
 		generateDocumentation(outputDir, memberXml, indexXml) &&
 		sectionXml->append(*memberXml) != -1;
@@ -116,19 +106,16 @@ ModuleItem::generateCompoundMemberDocumentation(
 
 //..............................................................................
 
-Variable::Variable()
-{
+Variable::Variable() {
 	m_itemKind = ModuleItemKind_Variable;
 	m_variableKind = VariableKind_Undefined;
 }
 
 sl::String
-Variable::createDoxyRefId()
-{
+Variable::createDoxyRefId() {
 	sl::String refId;
 
-	switch (m_variableKind)
-	{
+	switch (m_variableKind) {
 	case VariableKind_Enum:
 		refId = "enum_";
 		break;
@@ -146,8 +133,7 @@ Variable::createDoxyRefId()
 		break;
 
 	default:
-		switch (m_itemKind)
-		{
+		switch (m_itemKind) {
 		case ModuleItemKind_Field:
 			refId = "field_";
 			break;
@@ -167,8 +153,7 @@ Variable::createDoxyRefId()
 }
 
 void
-Variable::setInitializer(const Value& value)
-{
+Variable::setInitializer(const Value& value) {
 	m_initializer = value;
 
 	if (value.m_valueKind == ValueKind_Table)
@@ -176,13 +161,11 @@ Variable::setInitializer(const Value& value)
 }
 
 VariableKind
-Variable::ensureVariableKind()
-{
+Variable::ensureVariableKind() {
 	if (m_variableKind)
 		return m_variableKind;
 
-	if (m_initializer.m_valueKind != ValueKind_Table)
-	{
+	if (m_initializer.m_valueKind != ValueKind_Table) {
 		m_variableKind = VariableKind_Normal;
 		return m_variableKind;
 	}
@@ -207,12 +190,10 @@ Variable::generateDocumentation(
 	const sl::StringRef& outputDir,
 	sl::String* itemXml,
 	sl::String* indexXml
-	)
-{
+) {
 	VariableKind variableKind = getVariableKind();
 
-	switch (variableKind)
-	{
+	switch (variableKind) {
 	case VariableKind_Enum:
 		return generateLuaEnumDocumentation(outputDir, itemXml, indexXml);
 
@@ -233,14 +214,12 @@ Variable::generateCompoundMemberDocumentation(
 	sl::String* compoundXml,
 	sl::String* sectionXml,
 	sl::String* indexXml
-	)
-{
+) {
 	bool result = generateDocumentation(outputDir, memberXml, indexXml);
 	if (!result)
 		return false;
 
-	if (!isLuaClass())
-	{
+	if (!isLuaClass()) {
 		sectionXml->append(*memberXml);
 		return true;
 	}
@@ -269,14 +248,12 @@ Variable::generateCompoundMemberDocumentation(
 }
 
 void
-Variable::generateDoxygenFilterOutput(const sl::StringRef& indent)
-{
+Variable::generateDoxygenFilterOutput(const sl::StringRef& indent) {
 	printDoxygenFilterComment();
 
 	VariableKind variableKind = getVariableKind();
 
-	switch (variableKind)
-	{
+	switch (variableKind) {
 	case VariableKind_Enum:
 			return generateLuaEnumDoxygenFilterOutput(indent);
 
@@ -291,16 +268,14 @@ Variable::generateDoxygenFilterOutput(const sl::StringRef& indent)
 }
 
 size_t
-Variable::buildLuaBaseTypeNameList(sl::BoxList<sl::String>* list)
-{
+Variable::buildLuaBaseTypeNameList(sl::BoxList<sl::String>* list) {
 	static char token[] = ":luabasetype(";
 
 	sl::String text = m_doxyBlock->getInternalDescription();
 	size_t pos = 0;
 	char sep = ':';
 
-	for (size_t i = 0;; i++)
-	{
+	for (size_t i = 0;; i++) {
 		pos = text.find(token, pos);
 		if (pos == -1)
 			break;
@@ -322,15 +297,14 @@ Variable::generateVariableDocumentation(
 	const sl::StringRef& outputDir,
 	sl::String* itemXml,
 	sl::String* indexXml
-	)
-{
+) {
 	ensureDoxyBlock();
 
 	itemXml->format(
 		"<memberdef kind='variable' id='%s' %s>\n",
 		m_doxyBlock->getRefId ().sz(),
 		m_isLocal ? " static='yes'" : ""
-		);
+	);
 
 	itemXml->appendFormat("<name>%s</name>\n", m_name.sz());
 
@@ -346,18 +320,15 @@ Variable::generateVariableDocumentation(
 }
 
 bool
-Variable::generateLuaBaseTypeDocumentation(sl::String* itemXml)
-{
+Variable::generateLuaBaseTypeDocumentation(sl::String* itemXml) {
 	sl::BoxList<sl::String> baseTypeNameList;
 	buildLuaBaseTypeNameList(&baseTypeNameList);
 
 	sl::BoxIterator<sl::String> it = baseTypeNameList.getHead();
-	for (; it; it++)
-	{
+	for (; it; it++) {
 		const sl::String& baseTypeName = *it;
 		ModuleItem* baseType = findBaseType(baseTypeName);
-		if (!baseType)
-		{
+		if (!baseType) {
 			fprintf(stderr, "\\luabasetype %s not found\n", baseTypeName.sz());
 			continue;
 		}
@@ -368,7 +339,7 @@ Variable::generateLuaBaseTypeDocumentation(sl::String* itemXml)
 			"<basecompoundref refid='%s'>%s</basecompoundref>\n",
 			baseType->m_doxyBlock->getRefId().sz(),
 			baseTypeName.sz()
-			);
+		);
 	}
 
 	return true;
@@ -379,14 +350,12 @@ Variable::generateLuaClassDocumentation(
 	const sl::StringRef& outputDir,
 	sl::String* itemXml,
 	sl::String* indexXml
-	)
-{
+) {
 	ASSERT(m_initializer.m_table && m_doxyBlock);
 
 	VariableKind variableKind = getVariableKind();
 	const char* doxyCompoundKind;
-	switch (variableKind)
-	{
+	switch (variableKind) {
 	case VariableKind_Module:
 		doxyCompoundKind = "namespace";
 		break;
@@ -405,7 +374,7 @@ Variable::generateLuaClassDocumentation(
 		doxyCompoundKind,
 		m_doxyBlock->getRefId().sz(),
 		m_name.sz()
-		);
+	);
 
 	itemXml->format(
 		"<compounddef kind='%s' id='%s' language='Lua'>\n"
@@ -413,7 +382,7 @@ Variable::generateLuaClassDocumentation(
 		doxyCompoundKind,
 		m_doxyBlock->getRefId().sz(),
 		m_name.sz()
-		);
+	);
 
 	generateLuaBaseTypeDocumentation(itemXml);
 
@@ -421,20 +390,15 @@ Variable::generateLuaClassDocumentation(
 	sl::String sectionDef;
 
 	size_t count = m_initializer.m_table->m_fieldArray.getCount();
-	for (size_t i = 0; i < count; i++)
-	{
+	for (size_t i = 0; i < count; i++) {
 		Variable* field = m_initializer.m_table->m_fieldArray[i];
 		if (field->m_name.isEmpty())
 			continue;
 
-		if (field->m_initializer.m_valueKind != ValueKind_Function)
-		{
+		if (field->m_initializer.m_valueKind != ValueKind_Function) {
 			field->generateCompoundMemberDocumentation(outputDir, &fieldXml, itemXml, &sectionDef, indexXml);
-		}
-		else
-		{
-			if (field->m_initializer.m_function->m_name.isEmpty())
-			{
+		} else {
+			if (field->m_initializer.m_function->m_name.isEmpty()) {
 				field->m_initializer.m_function->m_name = field->m_name;
 				field->m_initializer.m_function->m_table = m_initializer.m_table;
 			}
@@ -449,8 +413,7 @@ Variable::generateLuaClassDocumentation(
 	itemXml->append("</sectiondef>\n");
 
 	sl::String footnoteXml = m_doxyBlock->getFootnoteString();
-	if (!footnoteXml.isEmpty())
-	{
+	if (!footnoteXml.isEmpty()) {
 		itemXml->append("<sectiondef>\n");
 		itemXml->append(footnoteXml);
 		itemXml->append("</sectiondef>\n");
@@ -469,8 +432,7 @@ Variable::generateLuaEnumDocumentation(
 	const sl::StringRef& outputDir,
 	sl::String* itemXml,
 	sl::String* indexXml
-	)
-{
+) {
 	ASSERT(m_initializer.m_table && m_doxyBlock);
 
 	itemXml->format(
@@ -478,12 +440,11 @@ Variable::generateLuaEnumDocumentation(
 		"<name>%s</name>\n",
 		m_doxyBlock->getRefId().sz(),
 		m_name.sz()
-		);
+	);
 
 	sl::String fieldXml;
 	size_t count = m_initializer.m_table->m_fieldArray.getCount();
-	for (size_t i = 0; i < count; i++)
-	{
+	for (size_t i = 0; i < count; i++) {
 		Variable* field = m_initializer.m_table->m_fieldArray[i];
 		if (field->m_initializer.isEmpty())
 			continue;
@@ -511,22 +472,20 @@ Variable::generateLuaEnumDocumentation(
 }
 
 void
-Variable::generateVariableDoxygenFilterOutput(const sl::StringRef& indent)
-{
+Variable::generateVariableDoxygenFilterOutput(const sl::StringRef& indent) {
 	printf(
 		"%s%sint %s",
 		indent.sz(),
 		m_isLocal ? "static " : "",
 		m_name.sz()
-		);
+	);
 
 	if (m_itemKind != ModuleItemKind_FunctionParam)
 		printf(";\n");
 }
 
 bool
-Variable::generateLuaBaseTypeDoxygenFilterOutput(const sl::StringRef& indent)
-{
+Variable::generateLuaBaseTypeDoxygenFilterOutput(const sl::StringRef& indent) {
 	sl::BoxList<sl::String> baseTypeNameList;
 	buildLuaBaseTypeNameList(&baseTypeNameList);
 
@@ -538,14 +497,12 @@ Variable::generateLuaBaseTypeDoxygenFilterOutput(const sl::StringRef& indent)
 }
 
 void
-Variable::generateLuaClassDoxygenFilterOutput(const sl::StringRef& indent)
-{
+Variable::generateLuaClassDoxygenFilterOutput(const sl::StringRef& indent) {
 	ASSERT(m_initializer.m_table && m_doxyBlock);
 
 	VariableKind variableKind = getVariableKind();
 	const char* cppKeyword;
-	switch (variableKind)
-	{
+	switch (variableKind) {
 	case VariableKind_Module:
 		cppKeyword = "namespace";
 		break;
@@ -564,20 +521,15 @@ Variable::generateLuaClassDoxygenFilterOutput(const sl::StringRef& indent)
 	printf("{\n");
 
 	size_t count = m_initializer.m_table->m_fieldArray.getCount();
-	for (size_t i = 0; i < count; i++)
-	{
+	for (size_t i = 0; i < count; i++) {
 		Variable* field = m_initializer.m_table->m_fieldArray[i];
 		if (field->m_name.isEmpty())
 			continue;
 
-		if (field->m_initializer.m_valueKind != ValueKind_Function)
-		{
+		if (field->m_initializer.m_valueKind != ValueKind_Function) {
 			field->generateDoxygenFilterOutput("\t");
-		}
-		else
-		{
-			if (field->m_initializer.m_function->m_name.isEmpty())
-			{
+		} else {
+			if (field->m_initializer.m_function->m_name.isEmpty()) {
 				field->m_initializer.m_function->m_name = field->m_name;
 				field->m_initializer.m_function->m_table = m_initializer.m_table;
 			}
@@ -590,15 +542,13 @@ Variable::generateLuaClassDoxygenFilterOutput(const sl::StringRef& indent)
 }
 
 void
-Variable::generateLuaEnumDoxygenFilterOutput(const sl::StringRef& indent)
-{
+Variable::generateLuaEnumDoxygenFilterOutput(const sl::StringRef& indent) {
 	ASSERT(m_initializer.m_table && m_doxyBlock);
 
 	printf("enum %s\n{\n", m_name.sz());
 
 	size_t count = m_initializer.m_table->m_fieldArray.getCount();
-	for (size_t i = 0; i < count; i++)
-	{
+	for (size_t i = 0; i < count; i++) {
 		Variable* field = m_initializer.m_table->m_fieldArray[i];
 		if (field->m_initializer.isEmpty())
 			continue;
@@ -612,15 +562,13 @@ Variable::generateLuaEnumDoxygenFilterOutput(const sl::StringRef& indent)
 
 //..............................................................................
 
-Function::Function()
-{
+Function::Function() {
 	m_itemKind = ModuleItemKind_Function;
 	m_isMethod = false;
 }
 
 sl::String
-Function::createDoxyRefId()
-{
+Function::createDoxyRefId() {
 	sl::String refId = "function_" + m_name;
 	refId.replace('.', '_');
 	refId.replace(':', '_');
@@ -634,8 +582,7 @@ Function::generateDocumentation(
 	const sl::StringRef& outputDir,
 	sl::String* itemXml,
 	sl::String* indexXml
-	)
-{
+) {
 	ensureDoxyBlock();
 
 	itemXml->format(
@@ -643,26 +590,25 @@ Function::generateDocumentation(
 		m_doxyBlock->getRefId ().sz(),
 		m_isLocal ? " static='yes'" : "",
 		m_isMethod ? " virt='virtual'" : ""
-		);
+	);
 
 	itemXml->appendFormat("<name>%s</name>\n", m_name.sz());
 
 	size_t count = m_paramArray.m_array.getCount();
-	for (size_t i = 0; i < count; i++)
-	{
+	for (size_t i = 0; i < count; i++) {
 		Variable* arg = m_paramArray.m_array[i];
 
 		itemXml->appendFormat(
 			"<param>\n"
 			"<declname>%s</declname>\n",
 			arg->m_name.sz()
-			);
+		);
 
 		if (!arg->m_initializer.m_source.isEmpty())
 			itemXml->appendFormat(
 				"<defval>%s</defval>\n",
 				arg->m_initializer.m_source.sz()
-				);
+			);
 
 		if (arg->m_doxyBlock)
 			itemXml->append(arg->m_doxyBlock->getDescriptionString());
@@ -675,7 +621,7 @@ Function::generateDocumentation(
 			"<param>\n"
 			"<type>...</type>\n"
 			"</param>\n"
-			);
+		);
 
 	itemXml->append(m_doxyBlock->getImportString());
 	itemXml->append(m_doxyBlock->getDescriptionString());
@@ -685,8 +631,7 @@ Function::generateDocumentation(
 }
 
 void
-Function::generateDoxygenFilterOutput(const sl::StringRef& indent)
-{
+Function::generateDoxygenFilterOutput(const sl::StringRef& indent) {
 	printDoxygenFilterComment();
 
 	printf(
@@ -695,10 +640,9 @@ Function::generateDoxygenFilterOutput(const sl::StringRef& indent)
 		m_isLocal ? "static " : "",
 		m_isMethod ? "virtual " : "",
 		m_name.sz()
-		);
+	);
 
-	if (m_paramArray.m_array.isEmpty())
-	{
+	if (m_paramArray.m_array.isEmpty()) {
 		printf(m_paramArray.m_isVarArg ? "...);\n" : ");\n");
 		return;
 	}
@@ -708,8 +652,7 @@ Function::generateDoxygenFilterOutput(const sl::StringRef& indent)
 	paramIndent = indent + '\t';
 
 	size_t count = m_paramArray.m_array.getCount();
-	for (size_t i = 0; i < count; i++)
-	{
+	for (size_t i = 0; i < count; i++) {
 		printf(i ? ",\n" : "\n");
 		m_paramArray.m_array[i]->generateDoxygenFilterOutput(paramIndent);
 	}
@@ -726,8 +669,7 @@ Variable*
 Module::createVariable(
 	const sl::StringRef& name,
 	ModuleItemKind itemKind
-	)
-{
+) {
 	Variable* variable = AXL_MEM_NEW(Variable);
 	variable->m_itemKind = itemKind;
 	variable->m_module = this;
@@ -740,16 +682,14 @@ Variable*
 Module::createTableVariable(
 	const sl::StringRef& name,
 	ModuleItemKind itemKind
-	)
-{
+) {
 	Variable* variable = createVariable(name, itemKind);
 	variable->setInitializer(createTable());
 	return variable;
 }
 
 Function*
-Module::createFunction(const sl::StringRef& name)
-{
+Module::createFunction(const sl::StringRef& name) {
 	Function* function = AXL_MEM_NEW(Function);
 	function->m_module = this;
 	function->m_name = name;
@@ -758,16 +698,14 @@ Module::createFunction(const sl::StringRef& name)
 }
 
 Table*
-Module::createTable()
-{
+Module::createTable() {
 	Table* table = AXL_MEM_NEW(Table);
 	m_tableList.insertTail(table);
 	return table;
 }
 
 Table*
-Module::findTable(const sl::StringRef& name)
-{
+Module::findTable(const sl::StringRef& name) {
 	sl::StringHashTableIterator<ModuleItem*> it = m_itemMap.find(name);
 	if (!it || it->m_value->m_itemKind != ModuleItemKind_Variable)
 		return NULL;
@@ -780,8 +718,7 @@ Table*
 Module::findTableField(
 	Table* table,
 	const sl::StringRef& name
-	)
-{
+) {
 	sl::StringHashTableIterator<Variable*> it = table->m_fieldMap.find(name);
 	if (!it)
 		return NULL;
@@ -795,8 +732,7 @@ Module::generateGlobalNamespaceDocumentation(
 	const sl::StringRef& outputDir,
 	sl::String* globalXml,
 	sl::String* indexXml
-	)
-{
+) {
 	bool result;
 
 	dox::Host* host = m_doxyModule.getHost();
@@ -811,8 +747,7 @@ Module::generateGlobalNamespaceDocumentation(
 	sl::String sectionDef;
 
 	sl::StringHashTableIterator<ModuleItem*> it = m_itemMap.getHead();
-	for (; it; it++)
-	{
+	for (; it; it++) {
 		ModuleItem* item = it->m_value;
 
 		result = item->generateCompoundMemberDocumentation(outputDir, &itemXml, globalXml, &sectionDef, indexXml);
@@ -833,8 +768,7 @@ Module::generateGlobalNamespaceDocumentation(
 }
 
 void
-Module::generateDoxygenFilterOutput()
-{
+Module::generateDoxygenFilterOutput() {
 	sl::StringHashTableIterator<ModuleItem*> it = m_itemMap.getHead();
 	for (; it; it++)
 		it->m_value->generateDoxygenFilterOutput();

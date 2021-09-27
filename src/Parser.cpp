@@ -16,8 +16,7 @@
 //..............................................................................
 
 Parser::Parser(Module* module):
-	m_doxyParser(&module->m_doxyModule)
-{
+	m_doxyParser(&module->m_doxyModule) {
 	m_module = module;
 	m_lastDeclaredItem = NULL;
 	m_scopeLevel = 0;
@@ -28,8 +27,7 @@ Parser::declareVariable(
 	const Token::Pos& pos,
 	const sl::StringRef& name,
 	ModuleItemKind itemKind
-	)
-{
+) {
 	bool isGlobalName = itemKind == ModuleItemKind_Variable;
 	Variable* variable = m_module->createVariable(name, itemKind);
 	finalizeDeclaration(pos, variable, isGlobalName);
@@ -41,13 +39,11 @@ Parser::declareLocalVariables(
 	const Token::Pos& pos,
 	const sl::BoxList<sl::StringRef>& nameList,
 	const sl::BoxList<Value>& initializerList
-	)
-{
+) {
 	size_t count = 0;
 	sl::ConstBoxIterator<sl::StringRef> it1 = nameList.getHead();
 	sl::ConstBoxIterator<Value> it2 = initializerList.getHead();
-	for (; it1 && it2; it1++, it2++, count++)
-	{
+	for (; it1 && it2; it1++, it2++, count++) {
 		Variable* variable = declareVariable(pos, *it1);
 		variable->m_isLocal = true;
 		variable->m_initializer = *it2;
@@ -60,8 +56,7 @@ size_t
 Parser::initializeVariables(
 	const sl::ArrayRef<Variable*>& variableArray,
 	const sl::BoxList<Value>& initializerList
-	)
-{
+) {
 	size_t i = 0;
 	size_t variableCount = variableArray.getCount();
 	sl::ConstBoxIterator<Value> it = initializerList.getHead();
@@ -75,8 +70,7 @@ Variable*
 Parser::declareIndexedField(
 	const Token::Pos& pos,
 	const Value& index
-	)
-{
+) {
 	Variable* field = declareVariable(pos, NULL, ModuleItemKind_Field);
 	field->m_index = index;
 	return field;
@@ -86,8 +80,7 @@ Variable*
 Parser::declareUnnamedField(
 	const Token::Pos& pos,
 	const Value& initializer
-	)
-{
+) {
 	Variable* field = declareVariable(pos, NULL, ModuleItemKind_Field);
 	field->setInitializer(initializer);
 	return field;
@@ -98,13 +91,11 @@ Parser::declareFunction(
 	const Token::Pos& pos,
 	FunctionName* name,
 	bool isLocal
-	)
-{
+) {
 	Function* function = m_module->createFunction(name->m_name);
 	function->m_isLocal = isLocal;
 
-	if (name->m_list.isEmpty())
-	{
+	if (name->m_list.isEmpty()) {
 		finalizeDeclaration(pos, function, true);
 		return function;
 	}
@@ -126,8 +117,7 @@ Parser::declareFunction(
 }
 
 Function*
-Parser::declareFunction(const Token::Pos& pos)
-{
+Parser::declareFunction(const Token::Pos& pos) {
 	Function* function = m_module->createFunction();
 	finalizeDeclaration(pos, function);
 	return function;
@@ -138,20 +128,17 @@ Parser::finalizeDeclaration(
 	const Token::Pos& pos,
 	ModuleItem* item,
 	bool isGlobalName
-	)
-{
+) {
 	item->m_fileName = m_fileName;
 	item->m_pos = pos;
 
 	dox::Block* block = m_doxyParser.popBlock();
-	if (block)
-	{
+	if (block) {
 		item->m_doxyBlock = block;
 		block->m_item = item;
 	}
 
-	if (isGlobalName && !item->m_name.isEmpty())
-	{
+	if (isGlobalName && !item->m_name.isEmpty()) {
 		sl::StringHashTableIterator<ModuleItem*> it = m_module->m_itemMap.visit(item->m_name);
 		if (!it->m_value) // keep the original declaration
 			it->m_value = item;
