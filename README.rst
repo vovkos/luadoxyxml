@@ -13,8 +13,6 @@ LuaDoxyXML
 ==========
 .. image:: https://travis-ci.org/vovkos/luadoxyxml.svg?branch=master
 	:target: https://travis-ci.org/vovkos/luadoxyxml
-.. image:: https://ci.appveyor.com/api/projects/status/oo9ql7v3gbvkxh3l?svg=true
-	:target: https://ci.appveyor.com/project/vovkos/luadoxyxml
 
 Abstract
 --------
