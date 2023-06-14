@@ -210,7 +210,6 @@ main(
 	setvbuf(stdout, NULL, _IOLBF, 1024);
 #endif
 
-	g::getModule()->setTag("luadoxyxml");
 	lex::registerParseErrorProvider();
 
 	CmdLine cmdLine;
