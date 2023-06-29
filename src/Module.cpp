@@ -670,7 +670,7 @@ Module::createVariable(
 	const sl::StringRef& name,
 	ModuleItemKind itemKind
 ) {
-	Variable* variable = AXL_MEM_NEW(Variable);
+	Variable* variable = new Variable;
 	variable->m_itemKind = itemKind;
 	variable->m_module = this;
 	variable->m_name = name;
@@ -690,7 +690,7 @@ Module::createTableVariable(
 
 Function*
 Module::createFunction(const sl::StringRef& name) {
-	Function* function = AXL_MEM_NEW(Function);
+	Function* function = new Function;
 	function->m_module = this;
 	function->m_name = name;
 	m_itemList.insertTail(function);
@@ -699,7 +699,7 @@ Module::createFunction(const sl::StringRef& name) {
 
 Table*
 Module::createTable() {
-	Table* table = AXL_MEM_NEW(Table);
+	Table* table = new Table;
 	m_tableList.insertTail(table);
 	return table;
 }
