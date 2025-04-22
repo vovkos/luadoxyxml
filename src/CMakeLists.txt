@@ -174,19 +174,13 @@ target_link_libraries(
 	axl_core
 )
 
-if(UNIX)
+if(UNIX AND NOT APPLE)
 	target_link_libraries(
 		luadoxyxml
 		pthread
 		dl
+		rt
 	)
-
-	if(NOT APPLE)
-		target_link_libraries(
-			luadoxyxml
-			rt
-		)
-	endif()
 endif()
 
 #. . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
